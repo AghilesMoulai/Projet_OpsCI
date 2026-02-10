@@ -59,132 +59,154 @@
     "title": "Fight Club",
     "year": 1999,
     "director": "David Fincher",
-    "genre": "Drama"
+    "genre": "Drama",
+    "image_url": "/images/fight_club.jpeg"
   },
   {
     "title": "Se7en",
     "year": 1995,
     "director": "David Fincher",
-    "genre": "Thriller"
+    "genre": "Thriller",
+    "image_url": "/images/se7en.jpeg"
   },
   {
     "title": "The Social Network",
     "year": 2010,
     "director": "David Fincher",
-    "genre": "Drama"
+    "genre": "Drama",
+    "image_url": "/images/the_social_network.jpeg"
   },
   {
     "title": "The Godfather",
     "year": 1972,
     "director": "Francis Ford Coppola",
-    "genre": "Crime"
+    "genre": "Crime",
+    "image_url": "/images/The_Godfather.jpeg"
   },
   {
     "title": "The Godfather Part II",
     "year": 1974,
     "director": "Francis Ford Coppola",
-    "genre": "Crime"
+    "genre": "Crime",
+    "image_url": "/images/the_god_father_II.jpeg"
   },
   {
     "title": "Goodfellas",
     "year": 1990,
     "director": "Martin Scorsese",
-    "genre": "Crime"
+    "genre": "Crime",
+    "image_url": "/images/good_fellas.jpeg"
   },
   {
     "title": "Taxi Driver",
     "year": 1976,
     "director": "Martin Scorsese",
-    "genre": "Drama"
+    "genre": "Drama",
+    "image_url": "/images/taxi_driver.jpeg"
   },
   {
     "title": "Parasite",
     "year": 2019,
     "director": "Bong Joon-ho",
-    "genre": "Thriller"
+    "genre": "Thriller",
+    "image_url": "/images/parasite.jpeg"
   },
   {
     "title": "Spirited Away",
     "year": 2001,
     "director": "Hayao Miyazaki",
-    "genre": "Animation"
+    "genre": "Animation",
+    "image_url": "/images/spirited_away.jpeg"
   },
   {
     "title": "Princess Mononoke",
     "year": 1997,
     "director": "Hayao Miyazaki",
-    "genre": "Animation"
+    "genre": "Animation",
+    "image_url": "/images/princess_mononoke.jpeg"
   },
   {
     "title": "Amélie",
     "year": 2001,
     "director": "Jean-Pierre Jeunet",
-    "genre": "Romance"
+    "genre": "Romance",
+    "image_url": "/images/amelie.jpeg"
   },
   {
     "title": "La Haine",
     "year": 1995,
     "director": "Mathieu Kassovitz",
-    "genre": "Drama"
+    "genre": "Drama",
+    "image_url": "/images/la_haine.jpeg"
   },
   {
     "title": "The Intouchables",
     "year": 2011,
     "director": "Olivier Nakache, Éric Toledano",
-    "genre": "Comedy"
+    "genre": "Comedy",
+    "image_url": "/images/intouchables.jpeg"
   },
   {
     "title": "Gladiator",
     "year": 2000,
     "director": "Ridley Scott",
-    "genre": "Action"
+    "genre": "Action",
+    "image_url": "/images/gladiator.jpeg"
   },
   {
     "title": "Alien",
     "year": 1979,
     "director": "Ridley Scott",
-    "genre": "Sci-Fi"
+    "genre": "Sci-Fi",
+    "image_url": "/images/alien.jpeg"
   },
   {
     "title": "Blade Runner 2049",
     "year": 2017,
     "director": "Denis Villeneuve",
-    "genre": "Sci-Fi"
+    "genre": "Sci-Fi",
+    "image_url": "/images/blade_runner_2049.jpeg"
   },
   {
     "title": "Arrival",
     "year": 2016,
     "director": "Denis Villeneuve",
-    "genre": "Sci-Fi"
+    "genre": "Sci-Fi",
+    "image_url": "/images/arrival.jpeg"
   },
   {
     "title": "Whiplash",
     "year": 2014,
     "director": "Damien Chazelle",
-    "genre": "Drama"
+    "genre": "Drama",
+    "image_url": "/images/whiplash.jpeg"
   },
   {
     "title": "La La Land",
     "year": 2016,
     "director": "Damien Chazelle",
-    "genre": "Musical"
+    "genre": "Musical",
+    "image_url": "/images/la_la_land.jpeg"
   },
   {
     "title": "Joker",
     "year": 2019,
     "director": "Todd Phillips",
-    "genre": "Drama"
+    "genre": "Drama",
+    "image_url": "/images/joker.jpeg"
   },
   {
     "title": "Mad Max: Fury Road",
     "year": 2015,
     "director": "George Miller",
-    "genre": "Action"
+    "genre": "Action",
+    "image_url": "/images/mad_max_fury_road.jpeg"
   },
   {
     "title": "The Grand Budapest Hotel",
     "year": 2014,
     "director": "Wes Anderson",
-    "genre": "Comedy"
+    "genre": "Comedy",
+    "image_url": "/images/the_grand_budapest_hotel.jpeg"
   }
 ]

@@ -43,14 +43,17 @@ async function loadMovies(limit = 5) {
   const res = await fetch(`http://127.0.0.1:8000/movies?limit=${limit}`);
   const movies = await res.json();
   
-    /**
-   * G&eacute;n&egrave;re les cartes de films dans la page.
+  /**
+   * Génère les cartes de films dans la page.
    */
   movies.forEach(movie => {
     const card = document.createElement("article");
     card.className = "card";
+
+    const imageUrl = `http://127.0.0.1:8000${movie.image_url}`;
+
     card.innerHTML = `
-      <img src="${movie.image}" alt="${movie.title}">
+      <img src="${imageUrl}" alt="${movie.title}">
       <div class="card-content">
         <h2>${movie.title}</h2>
         <p class="meta"><strong>R&eacute;alisateur :</strong> ${movie.director}</p>
