@@ -1,93 +1,219 @@
-# cinematheque_opsci
+# Projet OpsCI
 
+Application de cinémathèque avec :
+- un backend `Node.js / Express / PostgreSQL`
+- un front-end `Vue 3 / Vite / Pinia`
 
+Le plus important pour démarrer est juste en dessous.
 
-## Getting started
+## Démarrage rapide
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+Depuis la racine du projet :
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+### 1. Installer les dépendances
 
-## Add your files
+```bash
+cd backend
+npm install
 
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
+cd ../front-end
+npm install
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/Hocine_B/cinematheque_opsci.git
-git branch -M main
-git push -uf origin main
+
+### 2. Créer les fichiers `.env`
+
+```bash
+cp backend/.env.example backend/.env
+cp front-end/.env.example front-end/.env
 ```
 
-## Integrate with your tools
+### 3. Créer la base PostgreSQL
 
-* [Set up project integrations](https://gitlab.com/Hocine_B/cinematheque_opsci/-/settings/integrations)
+```bash
+sudo -u postgres psql
+```
 
-## Collaborate with your team
+Puis dans `psql` :
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+```sql
+CREATE DATABASE cinematheque;
+ALTER USER postgres WITH PASSWORD 'password';
+\q
+```
 
-## Test and Deploy
+### 4. Créer les tables
 
-Use the built-in continuous integration in GitLab.
+```bash
+cat backend/schema.sql | sudo -u postgres psql -d cinematheque
+```
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+### 5. Importer les films de `movies.json`
 
-***
+Depuis la racine du projet :
 
-# Editing this README
+```bash
+node - <<'EOF'
+const fs = require('fs')
+const path = require('path')
+const pool = require('./backend/db')
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+;(async () => {
+  const filePath = path.join(process.cwd(), 'backend', 'movies.json')
+  const movies = JSON.parse(fs.readFileSync(filePath, 'utf8'))
 
-## Suggestions for a good README
+  for (const movie of movies) {
+    const exists = await pool.query(
+      'SELECT id FROM movies WHERE title = $1 LIMIT 1',
+      [movie.title]
+    )
+    if (exists.rows.length > 0) continue
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+    await pool.query(
+      `INSERT INTO movies (title, director, genre, year, image_url, description)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        movie.title,
+        movie.director,
+        movie.genre,
+        movie.year,
+        movie.image_url || null,
+        movie.description || null,
+      ]
+    )
+  }
 
-## Name
-Choose a self-explaining name for your project.
+  await pool.end()
+})()
+EOF
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+### 6. Lancer le backend
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+```bash
+cd backend
+node index.js
+```
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+Backend :
+```text
+http://localhost:3000
+```
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+### 7. Lancer le front
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+Dans un autre terminal :
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+```bash
+cd front-end
+npm run dev
+```
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+Front :
+```text
+http://localhost:5173
+```
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+## Vérification rapide
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+### Vérifier les tables
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+```bash
+sudo -u postgres psql -d cinematheque -c "\dt"
+```
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+### Vérifier les films importés
 
-## License
-For open source projects, say how it is licensed.
+```bash
+sudo -u postgres psql -d cinematheque -c "SELECT id, title, year FROM movies ORDER BY id;"
+```
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+### Vérifier les utilisateurs
+
+```bash
+sudo -u postgres psql -d cinematheque -c "SELECT id, email, role FROM users;"
+```
+
+## Créer un compte admin
+
+1. Créer un compte normalement depuis l’application
+2. Puis lancer :
+
+```bash
+sudo -u postgres psql -d cinematheque
+```
+
+Ensuite :
+
+```sql
+UPDATE users
+SET role = 'admin'
+WHERE email = 'votre-email@example.com';
+\q
+```
+
+Reconnecte-toi ensuite avec ce compte.
+
+## Variables d’environnement
+
+### Backend
+
+Fichier : `backend/.env`
+
+Exemple :
+
+```env
+PORT=3000
+NODE_ENV=development
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=cinematheque
+DB_USER=postgres
+DB_PASSWORD=password
+SECRET_KEY=change-me-in-production
+```
+
+### Front-end
+
+Fichier : `front-end/.env`
+
+Exemple :
+
+```env
+VITE_API_URL=http://localhost:3000
+```
+
+## Ce que fait le projet
+
+- inscription et connexion
+- session JWT
+- catalogue de films
+- notes et critiques
+- panneau admin
+- ajout/modification/suppression de films
+- upload ou téléchargement d’affiches dans `backend/images`
+- filtres de catalogue
+- genres dynamiques depuis la base
+
+## Notes utiles
+
+- `backend/schema.sql` sert uniquement à créer les tables
+- `backend/movies.json` contient les films à importer dans PostgreSQL
+- les films ne sont pas lus directement depuis `movies.json` au runtime
+- le dossier `front-end/dist/` est généré automatiquement par `vite build`
+
+## Déploiement
+
+Pour le déploiement, il faut :
+- une base PostgreSQL distante
+- des variables d’environnement pour la DB
+- un `VITE_API_URL` pointant vers le backend public
+
+Le projet est prêt pour ça, car `backend/db.js` lit maintenant :
+- `DB_HOST`
+- `DB_PORT`
+- `DB_NAME`
+- `DB_USER`
+- `DB_PASSWORD`
+
+et le front lit :
+- `VITE_API_URL`

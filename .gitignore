@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+!backend/.env.example
+!front-end/.env.example
+node_modules/
+
+dist/
