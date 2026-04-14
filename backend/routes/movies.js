@@ -5,18 +5,18 @@ const admin = require("../middleware/admin");
 
 const {
     getMovies,
+    getGenres,
+    getMovieById,
     addMovie,
+    updateMovie,
     deleteMovie,
 } = require("../controllers/movieController");
 
 router.get("/", getMovies);
+router.get("/genres", getGenres);
+router.get("/:id", getMovieById);
 router.post("/", auth, admin, addMovie);
+router.put("/:id", auth, admin, updateMovie);
 router.delete("/:id", auth, admin, deleteMovie);
-
-console.log("auth =", auth);
-console.log("admin =", admin);
-console.log("getMovies =", getMovies);
-console.log("addMovie =", addMovie);
-console.log("deleteMovie =", deleteMovie);
 
 module.exports = router;

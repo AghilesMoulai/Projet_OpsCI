@@ -63,7 +63,7 @@ exports.me = async (req, res) => {
     try{
         const result = await pool.query(
             "SELECT id, email, role FROM users WHERE id=$1",
-            [res.user.id]
+            [req.user.id]
         );
 
         if (result.rows.length === 0) return res.sendStatus(400);
