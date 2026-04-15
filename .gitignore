@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+.codex
 !backend/.env.example
 !front-end/.env.example
 node_modules/
