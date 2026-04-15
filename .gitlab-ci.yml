@@ -1,0 +1,26 @@
+stages:
+ - test
+
+backend_tests:
+ stage: test
+ image: node:20
+ cache:
+  paths:
+   - backend/node_modules/
+ before_script:
+  - cd backend
+  - npm ci
+ script:
+  - npm test
+  
+frontend_tests:
+ stage: test
+ image: node:20
+ cache:
+  paths:
+   - front-end/node_modules/
+ before_script:
+  - cd front-end
+  - npm ci
+ script:
+  - npm test -- --run
