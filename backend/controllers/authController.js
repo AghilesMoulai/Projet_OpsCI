@@ -3,12 +3,16 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
 const Secret = process.env.SECRET_KEY || 'secret';
+const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
 exports.register = async (req, res) => {
     try {
         const {email, password} = req.body;
         if(!email || !password )
             return res.status(400).json({message: "Email et mot de passe requis."});
+
+        if (!EMAIL_REGEX.test(email))
+            return res.status(400).json({message: "Email invalide."});
 
         // verifier si l'email est déja pris
         const existing = await pool.query("SELECT id FROM users WHERE email=$1",[email]);

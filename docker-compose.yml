@@ -1,0 +1,24 @@
+services:
+ backend:
+  build:
+   context: ./backend
+  container_name: cinematheque-backend
+  ports:
+   - "3000:3000"
+  environment:
+   PORT: 3000
+   NODE_ENV: production
+   DATABASE_URL: ${DATABASE_URL}
+   SECRET_KEY: ${SECRET_KEY}
+   FRONTEND_URL: ${FRONTEND_URL}
+ 
+ frontend:
+  build:
+   context: ./front-end
+   args:
+    VITE_API_URL: ${VITE_API_URL}
+  container_name: cinematheque-frontend
+  ports:
+   - "8080:80"
+  depends_on:
+   - backend

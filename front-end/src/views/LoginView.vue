@@ -61,9 +61,7 @@
             <router-link to="/register">S’inscrire</router-link>
           </p>
 
-        </form>
-
-        <!-- Demo -->
+          <!-- Demo -->
         <div class="demo-accounts">
           <p class="demo-title">Comptes de démo</p>
           <div class="demo-btns">
@@ -75,6 +73,8 @@
             </button>
           </div>
         </div>
+
+        </form>
 
       </div>
     </div>
@@ -244,7 +244,11 @@ async function handleLogin() {
 
 /* demo */
 .demo-accounts {
-  margin-top: 2rem;
+  width: 100%;
+  padding: 12px;
+  justify-content: center;
+  font-size: 15px;
+  margin-top: 0.5rem;
 }
 
 .demo-btns {
@@ -253,11 +257,22 @@ async function handleLogin() {
 }
 
 .demo-btn {
-  flex: 1;
-  padding: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  font-size: 15px;
+  margin-top: 0.5rem;
+  color: var(--color-muted);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
 }
 
 .role-dot {
+  display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 50%;

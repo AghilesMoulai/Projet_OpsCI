@@ -62,4 +62,92 @@ describe("register", () => {
         message: "Email déja utilisé."
     });
   });
+
+  it("refuse la creation d'un utilisateur avec un email invalide", async () => {
+    req.body.email = "pas-un-email";
+
+    await register(req, res);
+
+    expect(pool.query).not.toHaveBeenCalled();
+    expect(bcrypt.hash).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Email invalide."
+    });
+  });
+
+  it("refuse la creation d'un utilisateur avec un email invalide", async () => {
+    req.body.email = "pas-un@email";
+
+    await register(req, res);
+
+    expect(pool.query).not.toHaveBeenCalled();
+    expect(bcrypt.hash).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Email invalide."
+    });
+  });
+
+  it("refuse la creation d'un utilisateur avec un email invalide", async () => {
+    req.body.email = "pas-un@email.c";
+
+    await register(req, res);
+
+    expect(pool.query).not.toHaveBeenCalled();
+    expect(bcrypt.hash).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Email invalide."
+    });
+  });
+
+  it("refuse la creation d'un utilisateur avec un email invalide", async () => {
+    req.body.email = "pas-un@@email.com";
+
+    await register(req, res);
+
+    expect(pool.query).not.toHaveBeenCalled();
+    expect(bcrypt.hash).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Email invalide."
+    });
+  });
+
+  it("refuse la creation d'un utilisateur avec un email invalide", async () => {
+    req.body.email = "pas'-un@email.com";
+
+    await register(req, res);
+
+    expect(pool.query).not.toHaveBeenCalled();
+    expect(bcrypt.hash).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Email invalide."
+    });
+  });
+
+  it("retourne 500 si la verification de l'email echoue en base", async () => {
+    pool.query.mockRejectedValueOnce(new Error("DB error"));
+
+    await register(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Erreur serveur."
+    });
+  });
+
+  it("retourne 500 si le hash du mot de passe echoue", async () => {
+    pool.query.mockResolvedValueOnce({ rows: []});
+    bcrypt.hash.mockRejectedValueOnce(new Error("Hash error"));
+
+    await register(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({
+      message: "Erreur serveur."
+    });
+  });
 });
