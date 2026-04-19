@@ -32,10 +32,10 @@
           <div class="field full">
             <label>Affiche du film</label>
             <input ref="fileInput" type="file" accept="image/*" @change="handleFileChange" />
-            <small class="field-help">Choisis une image locale pour l'enregistrer dans `backend/images`.</small>
+            <small class="field-help">Choisis une image locale pour l'enregistrer dans le cloud.</small>
             <label>Ou URL distante</label>
-            <input v-model="form.image_url" type="url" placeholder="https://…" @input="clearSelectedFile" />
-            <small class="field-help">Si tu mets une URL, le backend télécharge l'image et la stocke aussi dans `backend/images`.</small>
+            <input v-model="form.image_url" type="text" placeholder="https://… ou /movie-images/..." @input="clearSelectedFile" />
+            <small class="field-help">Si tu mets une URL, le backend télécharge l'image et la stocke aussi dans le cloud `minio/movie-images`.</small>
             <div v-if="previewUrl" class="poster-preview">
               <img :src="previewUrl" alt="Aperçu" @error="previewUrl = ''" />
             </div>

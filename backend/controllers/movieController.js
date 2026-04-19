@@ -1,8 +1,5 @@
 const pool = require("../db");
-const fs = require("fs/promises");
-const path = require("path");
-
-const imagesDir = path.join(__dirname, "..", "images");
+const { uploadBuffer } = require("../services/objectStorage");
 
 function slugifyFilename(value) {
     return value
@@ -14,7 +11,7 @@ function slugifyFilename(value) {
 }
 
 function buildImageUrl(filename) {
-    return `/images/${filename}`;
+    return `/movie-images/${filename}`;
 }
 
 function extensionFromMimeType(mimeType) {
@@ -43,9 +40,13 @@ async function saveBase64Image({ imageBase64, imageName, title }) {
 
     const baseName = slugifyFilename(imageName || title);
     const filename = `${Date.now()}_${baseName}${extension}`;
-    const filePath = path.join(imagesDir, filename);
+    
+    await uploadBuffer({
+        objectName: filename,
+        buffer: Buffer.from(base64Data, "base64"),
+        mimeType,
+    });
 
-    await fs.writeFile(filePath, Buffer.from(base64Data, "base64"));
     return buildImageUrl(filename);
 }
 
@@ -57,15 +58,20 @@ async function downloadImage({ imageUrl, title }) {
 
     const mimeType = response.headers.get("content-type")?.split(";")[0] || "";
     const extension = extensionFromMimeType(mimeType);
+    
     if (!extension) {
         throw new Error("Format d'image distante non supporte.");
     }
 
     const filename = `${Date.now()}_${slugifyFilename(title)}${extension}`;
-    const filePath = path.join(imagesDir, filename);
     const arrayBuffer = await response.arrayBuffer();
 
-    await fs.writeFile(filePath, Buffer.from(arrayBuffer));
+    await uploadBuffer({
+        objectName: filename,
+        buffer: Buffer.from(arrayBuffer),
+        mimeType,
+    });
+    
     return buildImageUrl(filename);
 }
 
