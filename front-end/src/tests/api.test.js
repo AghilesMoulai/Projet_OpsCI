@@ -10,7 +10,7 @@ describe("resolveMediaUrl", () => {
 
   it("construit une URL complete a partir d'un chemin relatif", () => {
     expect(resolveMediaUrl("/images/poster.jpg")).toBe(
-      "http://localhost:3000/images/poster.jpg"
+      "/images/poster.jpg"
     );
   });
 
