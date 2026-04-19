@@ -32,10 +32,10 @@ backend_audit:
  before_script:
   - cd backend
   - npm ci
-script:
+ script:
   - npm audit --audit-level=high
 
-frontend-audit:
+frontend_audit:
  stage: security
  image: node:20
  before_script:
@@ -48,7 +48,7 @@ semgrep:
   stage: security
   image: returntocorp/semgrep
   script:
-   - semgrep --config=auto
+   - semgrep --config=auto .
   
 zap_baseline:
  stage: security
