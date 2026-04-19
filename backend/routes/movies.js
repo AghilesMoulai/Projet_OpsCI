@@ -7,6 +7,7 @@ const {
     getMovies,
     getGenres,
     getMovieById,
+    getMovieSuggestions,
     addMovie,
     updateMovie,
     deleteMovie,
@@ -14,6 +15,7 @@ const {
 
 router.get("/", getMovies);
 router.get("/genres", getGenres);
+router.get("/:id/suggestions", getMovieSuggestions);
 router.get("/:id", getMovieById);
 router.post("/", auth, admin, addMovie);
 router.put("/:id", auth, admin, updateMovie);

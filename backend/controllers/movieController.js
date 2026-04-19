@@ -231,3 +231,43 @@ exports.deleteMovie = async (req, res) => {
         res.status(500).json({ message: "Erreur serveur." });
     }
 };
+
+exports.getMovieSuggestions = async (req, res) => {
+    try {
+        const movieId = req.params.id
+
+        // on récupère le film sélectionné
+        const movieResult = await pool.query(
+            "SELECT id, genre FROM movies WHERE id = $1",
+            [movieId]
+        );
+
+        if(movieResult.rows.length === 0){
+            return res.status(404).json({message: "Film introuvable."});
+        }
+
+        const currentMovie = movieResult.rows[0];
+
+        // chercher des films du meme genre, sauf le film courant
+        const suggestionsResult = await pool.query(
+            `SELECT
+                m.*,
+                AVG(r.rating)::NUMERIC(3,1) AS average_rating,
+                COUNT(r.id)::INT AS rating_count
+            FROM movies m
+            LEFT JOIN reviews r ON r.movie_id = m.id
+            WHERE m.genre = $1 AND m.id <> $2
+            GROUP BY m.id
+            ORDER BY average_rating DESC NULLS LAST, m.title ASC
+            LIMIT 4`,
+            [currentMovie.genre, movieId]
+        );
+
+        res.json(suggestionsResult.rows);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({message: "Erreur lors de la récupération des suggestions."});        
+    }
+};
+

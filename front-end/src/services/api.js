@@ -2,7 +2,7 @@ import axios from 'axios'
 
 // Le backend tourne sur port 3000 (pas de /api prefix)
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
+  baseURL: '/api',
   timeout: 10000,
   headers: { 'Content-Type': 'application/json' }
 })
@@ -38,7 +38,9 @@ export const authAPI = {
 
 // ── Films ─────────────────────────────────────────────
 // GET    /movies?genre=&year=&search=
+// GET    /movies/genres
 // GET    /movies/:id
+// GET    /movies/:id/suggestions
 // POST   /movies  (admin)
 // PUT    /movies/:id (admin)
 // DELETE /movies/:id (admin)
@@ -46,6 +48,7 @@ export const filmsAPI = {
   getAll:  (params)    => api.get('/movies', { params }),
   getGenres: ()        => api.get('/movies/genres'),
   getById: (id)        => api.get(`/movies/${id}`),
+  getSuggestions: (id) => api.get(`/movies/${id}/suggestions`),
   create:  (data)      => api.post('/movies', data),
   update:  (id, data)  => api.put(`/movies/${id}`, data),
   delete:  (id)        => api.delete(`/movies/${id}`)
@@ -64,8 +67,7 @@ export const reviewsAPI = {
 export function resolveMediaUrl(url) {
   if (!url) return ''
   if (/^https?:\/\//i.test(url)) return url
-  if (!url.startsWith('/')) return url
-  return `${api.defaults.baseURL}${url}`
+  return url
 }
 
 export default api
