@@ -6,11 +6,12 @@ backend_tests:
  stage: test
  image: node:20
  cache:
+  key: backend-${CI_COMMIT_REF_SLUG}
   paths:
-   - backend/node_modules/
+   - backend/.npm/
  before_script:
   - cd backend
-  - npm ci
+  - npm ci --cache .npm --prefer-offline
  script:
   - npm test
   
@@ -18,11 +19,12 @@ frontend_tests:
  stage: test
  image: node:20
  cache:
+  key: frontend-${CI_COMMIT_REF_SLUG}
   paths:
-   - front-end/node_modules/
+   - front-end/.npm/
  before_script:
   - cd front-end
-  - npm ci
+  - npm ci --cache .npm --prefer-offline
  script:
   - npm test -- --run
 
