@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+.codex
+!backend/.env.example
+!front-end/.env.example
+node_modules/
+
+dist/
+zap-report.html
+zap-report.json
+zap-report.xml
+zap.yaml
+
+.vorg.db
