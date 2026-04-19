@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# Projet_OpsCI
-=======
 # Projet OpsCI - Cinémathèque
 
 Application web de cinematheque avec :
@@ -445,5 +442,3 @@ Projet realise dans le cadre de l'UE OpsCI. Par:
 - Aghiles MOULAI <Aghiles.Moulai.pro@gmail.com>
 
 - Hocine BALEH <Hocine_b18@outlook.com>
-
->>>>>>> lab/test
