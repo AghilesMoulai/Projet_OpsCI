@@ -10,3 +10,5 @@ dist/
 zap-report.html
 zap-report.json
 zap-report.xml
+zap.yaml
+
