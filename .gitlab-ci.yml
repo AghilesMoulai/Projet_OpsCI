@@ -61,8 +61,9 @@ zap_baseline:
  script:
   - docker compose up -d --build
   - NETWORK_NAME=$(docker network ls --format '{{.Name}}' | grep '_default' | head -n 1)
-  - docker run --rm --network "$NETWORK_NAME" ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://frontend:80 -r zap-report.html
-  - docker compose down
+  - docker run --rm -v "$PWD:/zap/wrk" --network "$NETWORK_NAME" ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://frontend:80 -r zap-report.html
+ after_script:
+  - docker compose down || true
  artifacts:
   when: always
   paths:
