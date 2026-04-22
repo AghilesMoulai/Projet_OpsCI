@@ -15,6 +15,14 @@ Le projet est preparé pour un lancement local en Docker avec :
 - stockage d'images `MinIO`
 - base PostgreSQL distante (`Neon` pour ma part car gratuite pour des petites DB)
 
+Le projet peut aussi etre lance en Kubernetes local avec `Minikube` :
+
+- frontend, backend et `MinIO` deployes dans le cluster
+- images Docker construites dans l'environnement Docker de `Minikube`
+- `Ingress` local pour exposer l'application
+- `HorizontalPodAutoscaler` pour le frontend et le backend
+- migration possible des anciennes affiches depuis le `MinIO` Docker historique vers le `MinIO` Kubernetes
+
 ## Architecture
 
 - `front-end/`
@@ -23,6 +31,8 @@ Le projet est preparé pour un lancement local en Docker avec :
   API Express, authentification JWT, gestion des films et des avis
 - `docker-compose.yml`
   orchestration locale des conteneurs frontend, backend et MinIO
+- `k8s/`
+  manifests Kubernetes pour `Minikube`, `Ingress` et autoscaling
 - base PostgreSQL distante
   fournie via `DATABASE_URL`
 - `MinIO`
@@ -36,6 +46,7 @@ Flux de fonctionnement :
 - Nginx transfere les requetes images `/movie-images/...` vers MinIO
 - le backend se connecte a PostgreSQL via `DATABASE_URL`
 - le backend enregistre les nouvelles affiches dans le bucket `movie-images` de MinIO
+- pour les tests Kubernetes sans domaine fixe, le CORS backend autorise `localhost` et les adresses privees du reseau local
 
 ## Fonctionnalites
 
@@ -78,6 +89,7 @@ Exemple :
 
 ```env
 DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
+# SOURCE_DATABASE_URL=postgresql://user:password@old-host/old-db?sslmode=require
 SECRET_KEY=change-me-in-production
 FRONTEND_URL=http://localhost:8080
 VITE_API_URL=/api
@@ -88,9 +100,12 @@ MINIO_ROOT_PASSWORD=change-me
 Important :
 
 - ne committe jamais les vraies valeurs de `DATABASE_URL`
+- si tu migres depuis une autre base, garde l'ancienne URL dans `SOURCE_DATABASE_URL`
 - ne committe jamais les vraies valeurs de `SECRET_KEY`
 - ne committe jamais les vrais identifiants MinIO
 - adapte `FRONTEND_URL` et `VITE_API_URL` a l'IP ou au domaine reel en deploiement
+- URL-encode les mots de passe PostgreSQL si besoin, par exemple `@` devient `%40` et `'` devient `%27`
+- pour un projet d'experience sans domaine public, `FRONTEND_URL` peut rester sur `http://localhost:8080` car le backend accepte aussi les acces depuis le reseau local prive
 
 ### Backend
 
@@ -249,11 +264,11 @@ et pour les images :
 /movie-images/...
 ```
 
-## Demarrage Sans Docker
+## Démarrage Sans Docker
 
 Ce mode reste utile pour le developpement.
 
-### Backend
+### Démarrage Backend
 
 ```bash
 cd backend
@@ -268,7 +283,7 @@ API disponible sur :
 http://localhost:3000
 ```
 
-### Frontend
+### Démarrage Frontend
 
 Dans un autre terminal :
 
@@ -302,7 +317,7 @@ Dans ce mode, `front-end/nginx.conf` n'est pas utilise tant que le frontend tour
 
 ### Tests applicatifs
 
-#### Backend
+#### Test Backend
 
 ```bash
 cd backend
@@ -315,7 +330,7 @@ Les tests backend couvrent notamment :
 - la connexion
 - l'ajout d'avis
 
-#### Frontend
+#### Test Frontend
 
 ```bash
 cd front-end
@@ -401,6 +416,7 @@ Points importants a retenir :
 - `DATABASE_URL` reste un secret backend
 - `VITE_API_URL` peut rester a `/api` quand le frontend est place derriere le proxy Nginx
 - `FRONTEND_URL` doit correspondre a l'origine autorisee par le backend pour le CORS
+- pour les tests Kubernetes sans domaine fixe, le backend est volontairement moins restrictif et accepte `localhost` ainsi que les IP privees du LAN (`192.168.x.x`, `10.x.x.x`, `172.16.x.x` a `172.31.x.x`)
 - les images sont accessibles via `/movie-images/...`
 - avec `createWebHistory()`, Nginx doit rediriger les routes frontend vers `index.html`
 
@@ -410,6 +426,164 @@ En deploiement distant :
 - plusieurs clients peuvent appeler le meme backend
 - tous les utilisateurs partagent la meme base PostgreSQL si le backend pointe vers la meme `DATABASE_URL`
 - les images restent centralisees dans MinIO
+
+## Kubernetes Local Avec Minikube
+
+La version Kubernetes retenue pour le projet est la suivante :
+
+- `frontend`, `backend` et `MinIO` tournent dans `Minikube`
+- le backend Kubernetes pointe vers le service `minio`
+- le frontend Kubernetes proxyfie `/movie-images/` vers `minio:9000`
+- le frontend et le backend disposent chacun d'un `HorizontalPodAutoscaler`
+
+Pourquoi cette architecture :
+
+- elle correspond mieux a un vrai deploiement CI/CD
+- elle rend la pipeline GitLab coherente avec les manifests Kubernetes
+- elle permet de garder les anciennes affiches en les migrant une fois vers le `MinIO` Kubernetes
+
+### Commandes Importantes
+
+Demarrer `Minikube` :
+
+```bash
+minikube start --driver=docker
+minikube addons enable ingress
+minikube addons enable metrics-server
+```
+
+Basculer Docker vers `Minikube` pour builder les images utilisees par Kubernetes :
+
+```bash
+eval $(minikube docker-env)
+```
+
+Revenir au Docker normal de la machine :
+
+```bash
+eval $(minikube docker-env -u)
+```
+
+Builder les images pour Kubernetes :
+
+```bash
+docker build -t cinematheque/backend:latest backend
+docker build --build-arg VITE_API_URL=/api -t cinematheque/frontend:latest front-end
+```
+
+Verifier les pods :
+
+```bash
+kubectl get pods -n cinematheque
+kubectl get svc -n cinematheque
+kubectl get ingress -n cinematheque
+```
+
+Acceder au site :
+
+```bash
+minikube ip
+```
+
+Puis ouvrir :
+
+```text
+http://IP_DE_MINIKUBE
+```
+
+Pour un acces depuis un autre PC du reseau local :
+
+```bash
+kubectl port-forward -n cinematheque svc/frontend 8081:80 --address 0.0.0.0
+```
+
+Puis ouvrir :
+
+```text
+http://IP_LOCALE_DU_PC_HOTE:8081
+```
+
+### Deploiement Kubernetes
+
+Le script [script.sh](/home/aghiles/Documents/OpsCI/projet/Projet_OpsCI/script.sh) automatise le deploiement.
+
+Execution :
+
+```bash
+./script.sh
+```
+
+Le script :
+
+- verifie que `minikube`, `kubectl` et `docker` sont disponibles
+- demarre `Minikube` si necessaire
+- active `ingress` et `metrics-server`
+- bascule Docker vers `Minikube`
+- build les images frontend et backend
+- applique les manifests Kubernetes, y compris `MinIO`
+- cree ou met a jour les secrets a partir du fichier `.env`
+- affiche les commandes utiles de verification
+
+### Migration Des Anciennes Images
+
+Si tu veux retrouver dans Kubernetes les anciennes affiches stockees dans ton `MinIO` Docker historique, utilise :
+
+```bash
+./migrate_minio.sh
+```
+
+Ce script :
+
+- ouvre temporairement un `port-forward` vers le `MinIO` Kubernetes
+- utilise `minio/mc`
+- copie le bucket `movie-images` du `MinIO` Docker hote vers le `MinIO` Kubernetes
+
+Conditions :
+
+- le `MinIO` Docker historique doit etre lance sur `localhost:9000`
+- le `MinIO` Kubernetes doit deja etre deploye
+- la base PostgreSQL n'a pas besoin d'etre modifiee si les noms d'objets restent identiques
+
+### Autoscaling
+
+L'autoscaling horizontal est configure dans [k8s/hpa.yaml](/home/aghiles/Documents/OpsCI/projet/Projet_OpsCI/k8s/hpa.yaml).
+
+Verification :
+
+```bash
+kubectl get hpa -n cinematheque
+kubectl top pods -n cinematheque
+kubectl get deploy -n cinematheque
+```
+
+Sur ce projet, l'autoscaling a ete valide experimentalement :
+
+- le `backend-hpa` surveille la CPU du deployment `backend`
+- seuil cible : `70%`
+- plage de replicas : `1` a `5`
+- lors d'une charge artificielle sur `/api/movies`, Kubernetes a augmente le nombre de replicas du backend de `1` a `5`
+
+### Revenir A Docker Compose
+
+Quand Docker a ete bascule vers `Minikube`, les commandes `docker` et `docker compose` n'utilisent plus le daemon Docker normal de la machine.
+
+Pour revenir au Docker hote :
+
+```bash
+eval $(minikube docker-env -u)
+```
+
+Ensuite :
+
+```bash
+docker compose up -d --build
+```
+
+L'application redevient alors accessible sur :
+
+```text
+http://localhost:8080
+```
 
 ## Structure Des Fichiers Docker
 
@@ -442,4 +616,3 @@ Projet realise dans le cadre de l'UE OpsCI. Par:
 - Aghiles MOULAI <Aghiles.Moulai.pro@gmail.com>
 
 - Hocine BALEH <Hocine_b18@outlook.com>
-

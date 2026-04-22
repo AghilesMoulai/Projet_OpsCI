@@ -12,4 +12,7 @@ zap-report.json
 zap-report.xml
 zap.yaml
 
+migrate_minio.sh
+migrate_postgres.sh
+
 .vorg.db
