@@ -140,4 +140,4 @@ deploy_kubernetes:
   name: production
  only:
   - main  
-  - deploy
+  - deployment
