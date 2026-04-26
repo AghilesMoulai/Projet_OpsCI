@@ -41,6 +41,7 @@ echo "Build des images dans Docker de Minikube..."
 eval "$(minikube docker-env)"
 docker build -t cinematheque/backend:latest backend
 docker build --build-arg VITE_API_URL=/api -t cinematheque/frontend:latest front-end
+docker build -t cinematheque/event-worker:latest event-worker
 
 echo "Creation / mise a jour des secrets..."
 kubectl apply -f k8s/namespace.yaml
@@ -61,21 +62,27 @@ kubectl create secret generic minio-secrets \
 echo "Application des manifests Kubernetes..."
 kubectl apply -f k8s/configmap.yaml
 kubectl apply -f k8s/minio-pvc.yaml
+kubectl apply -f k8s/kafka.yaml
 kubectl apply -f k8s/minio.yaml
 kubectl apply -f k8s/backend.yaml
 kubectl apply -f k8s/frontend.yaml
+kubectl apply -f k8s/event-worker.yaml
 kubectl apply -f k8s/ingress.yaml
 kubectl apply -f k8s/hpa.yaml
 
 echo "Redemarrage des deployments..."
 kubectl rollout restart deployment/minio -n cinematheque
+kubectl rollout restart deployment/kafka -n cinematheque
 kubectl rollout restart deployment/backend -n cinematheque
 kubectl rollout restart deployment/frontend -n cinematheque
+kubectl rollout restart deployment/event-worker -n cinematheque
 
 echo "Attente des rollouts..."
 kubectl rollout status deployment/minio -n cinematheque --timeout=180s
+kubectl rollout status deployment/kafka -n cinematheque --timeout=180s
 kubectl rollout status deployment/backend -n cinematheque --timeout=180s
 kubectl rollout status deployment/frontend -n cinematheque --timeout=180s
+kubectl rollout status deployment/event-worker -n cinematheque --timeout=180s
 
 echo
 echo "Deploiement termine."
