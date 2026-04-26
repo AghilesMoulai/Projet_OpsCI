@@ -1,7 +1,6 @@
 services:
  minio:
   image: minio/minio:latest
-  container_name: cinematheque-minio
   command: server /data --console-address ":9001"
   ports:
    - "9000:9000"
@@ -15,7 +14,6 @@ services:
  backend:
   build:
    context: ./backend
-  container_name: cinematheque-backend
   ports:
    - "3000:3000"
   environment:
@@ -38,7 +36,6 @@ services:
    context: ./front-end
    args:
     VITE_API_URL: ${VITE_API_URL}
-  container_name: cinematheque-frontend
   ports:
    - "8080:80"
   depends_on:
