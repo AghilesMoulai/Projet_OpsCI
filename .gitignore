@@ -1,18 +1,34 @@
+# Environnement / secrets
 .env
 .env.*
 !.env.example
-.codex
 !backend/.env.example
 !front-end/.env.example
-node_modules/
+.codex
 
+# Dependances / builds
+node_modules/
 dist/
+coverage/
+
+# Dumps et exports de bases de donnees
+*.dump
+*.backup
+*.sql
+!backend/schema.sql
+neon_*.sql
+*_schema*.sql
+*_data*.sql
+
+# Rapports generes
 zap-report.html
 zap-report.json
 zap-report.xml
 zap.yaml
 
+# Scripts locaux de migration
 migrate_minio.sh
 migrate_postgres.sh
 
+# Fichiers locaux d'outillage
 .vorg.db
