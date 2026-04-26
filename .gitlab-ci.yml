@@ -32,6 +32,8 @@ frontend_tests:
 
 build_backend_image:
  stage: build
+ tags:
+  - local
  variables:
   BACKEND_IMAGE: $CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA
  before_script:
@@ -42,6 +44,8 @@ build_backend_image:
 
 build_frontend_image:
  stage: build
+ tags:
+  - local
  variables:
   FRONTEND_IMAGE: $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA
  before_script:
@@ -76,6 +80,8 @@ semgrep:
   
 zap_baseline:
  stage: security
+ tags:
+  - local
  variables:
   DATABASE_URL: ${CI_DATABASE_URL}
   SECRET_KEY: ${CI_SECRET_KEY}
