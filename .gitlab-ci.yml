@@ -126,6 +126,7 @@ deploy_kubernetes:
  image:
   name: bitnami/kubectl:latest
   entrypoint: [""]
+ when: manual
  variables:
   KUBE_NAMESPACE: cinematheque
   BACKEND_IMAGE: $CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA
