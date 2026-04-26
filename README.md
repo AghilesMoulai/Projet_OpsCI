@@ -739,6 +739,66 @@ Avantages de cette approche :
 - l'architecture est plus proche d'un environnement de production
 - cela facilite une future migration vers Kubernetes ou un stockage compatible S3
 
+## Event Management Kafka
+
+Le projet ajoute une couche evenementielle avec `Kafka` via `Redpanda`, une implementation compatible Kafka plus simple a lancer en local.
+
+Objectif :
+
+- le backend publie des evenements metier sans bloquer le fonctionnement principal de l'API
+- un worker separe consomme ces evenements
+- les traitements secondaires peuvent evoluer sans alourdir les routes Express
+
+Flux :
+
+```text
+Frontend
+  -> Backend Express
+  -> PostgreSQL / MinIO
+  -> Kafka topic cinematheque.events
+  -> event-worker
+  -> logs / audit / futures statistiques
+```
+
+Evenements publies actuellement :
+
+```text
+user.registered
+user.logged_in
+```
+
+Composants :
+
+- `backend/services/eventBus.js`
+  producteur Kafka utilise par le backend
+- `event-worker/`
+  consommateur Kafka independant
+- `docker-compose.yml`
+  lance `kafka` avec Redpanda et `event-worker`
+- `k8s/kafka.yaml`
+  deploie Redpanda dans Minikube
+- `k8s/event-worker.yaml`
+  deploie le consommateur dans Minikube
+
+Variables :
+
+```env
+KAFKA_BROKERS=kafka:9092
+KAFKA_TOPIC=cinematheque.events
+```
+
+Verification en Docker Compose :
+
+```bash
+docker compose logs -f event-worker
+```
+
+Verification en Kubernetes :
+
+```bash
+kubectl logs -n cinematheque deployment/event-worker -f
+```
+
 ## Déploiement
 
 Le projet est prepare pour un deploiement avec :

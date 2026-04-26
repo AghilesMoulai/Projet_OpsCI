@@ -1,6 +1,7 @@
 const pool = require("../db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const {publishEvent} = require("../services/eventBus")
 
 const Secret = process.env.SECRET_KEY || 'secret';
 const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
@@ -24,6 +25,12 @@ exports.register = async (req, res) => {
         
         // insertion du nouvel utilisateur dans la base de données
         const result = await pool.query("INSERT INTO users (email, password, role) VALUES ($1, $2, 'user') RETURNING id, email, role", [email, hash]);
+
+        await publishEvent("user.registered", {
+          userId: result.rows[0].id,
+          email: result.rows[0].email,
+          role: result.rows[0].role,
+        });
 
         res.status(201).json(result.rows[0]);
     } catch(err) {
@@ -52,6 +59,12 @@ exports.login = async (req, res) => {
             Secret,
             {expiresIn: "1h"}
         );
+
+        await publishEvent("user.logged_in", {
+          userId: user.id,
+          email: user.email,
+          role: user.role,
+        });
 
         res.json({
             token,

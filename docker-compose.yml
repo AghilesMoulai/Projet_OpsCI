@@ -28,8 +28,11 @@ services:
    MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
    MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
    MINIO_BUCKET: movie-images
+   KAFKA_BROKERS: kafka:9092
+   KAFKA_TOPIC: cinematheque.events
   depends_on:
    - minio
+   - kafka
  
  frontend:
   build:
@@ -41,5 +44,38 @@ services:
   depends_on:
    - backend
   
+ kafka:
+  image: redpandadata/redpanda:latest
+  command:
+   - redpanda
+   - start
+   - --overprovisioned
+   - --smp
+   - "1"
+   - --memory
+   - 512M
+   - --reserve-memory
+   - 0M
+   - --node-id
+   - "0"
+   - --check=false
+   - --kafka-addr
+   - PLAINTEXT://0.0.0.0:9092
+   - --advertise-kafka-addr
+   - PLAINTEXT://kafka:9092
+  ports:
+   - "9092:9092"
+
+ event-worker:
+  build:
+   context: ./event-worker
+  environment:
+   KAFKA_BROKERS: kafka:9092
+   KAFKA_TOPIC: cinematheque.events
+  depends_on:
+   - kafka
+  restart: on-failure
+
+
 volumes:
  minio_data:

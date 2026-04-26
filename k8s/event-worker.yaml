@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: event-worker
+  namespace: cinematheque
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: event-worker
+  template:
+    metadata:
+      labels:
+        app: event-worker
+    spec:
+      containers:
+        - name: event-worker
+          image: cinematheque/event-worker:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: cinematheque-config
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "96Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
