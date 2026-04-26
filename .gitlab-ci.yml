@@ -32,12 +32,7 @@ frontend_tests:
 
 build_backend_image:
  stage: build
- image: docker:27
- services:
-  - docker:27-dind
  variables:
-  DOCKER_HOST: tcp://docker:2375
-  DOCKER_TLS_CERTDIR: ""
   BACKEND_IMAGE: $CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA
  before_script:
   - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
@@ -47,12 +42,7 @@ build_backend_image:
 
 build_frontend_image:
  stage: build
- image: docker:27
- services:
-  - docker:27-dind
  variables:
-  DOCKER_HOST: tcp://docker:2375
-  DOCKER_TLS_CERTDIR: ""
   FRONTEND_IMAGE: $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA
  before_script:
   - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
@@ -86,12 +76,7 @@ semgrep:
   
 zap_baseline:
  stage: security
- image: docker:27
- services:
-  - docker:27-dind
  variables:
-  DOCKER_HOST: tcp://docker:2375
-  DOCKER_TLS_CERTDIR: ""
   DATABASE_URL: ${CI_DATABASE_URL}
   SECRET_KEY: ${CI_SECRET_KEY}
   FRONTEND_URL: http://frontend:80
