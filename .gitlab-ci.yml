@@ -97,13 +97,15 @@ zap_baseline:
   - docker compose down --remove-orphans || true
   - docker compose up -d --build
   - NETWORK_NAME=$(docker network ls --format '{{.Name}}' | grep '_default' | head -n 1)
-  - docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/zap/wrk" --network "$NETWORK_NAME" ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://frontend:80 -r zap-report.html -I
+  - mkdir -p zap-wrk
+  - chmod 777 zap-wrk
+  - docker run --rm -v "$PWD/zap-wrk:/zap/wrk" --network "$NETWORK_NAME" ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://frontend:80 -r zap-report.html -I
  after_script:
   - docker compose down || true
  artifacts:
   when: always
   paths:
-   - zap-report.html
+   - zap-wrk/zap-report.html
 
 deploy_kubernetes:
  stage: deploy
