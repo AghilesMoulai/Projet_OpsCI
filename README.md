@@ -4,7 +4,7 @@ Application web de cinematheque avec :
 
 - un frontend `Vue 3 / Vite / Pinia`
 - un backend `Node.js / Express`
-- une base de donnees `PostgreSQL` distante via `Neon`
+- une base de donnees `PostgreSQL` accessible via `DATABASE_URL`
 - un stockage d'images objet via `MinIO`
 
 Le projet est preparé pour un lancement local en Docker avec :
@@ -13,7 +13,7 @@ Le projet est preparé pour un lancement local en Docker avec :
 - backend conteneurisé
 - proxy `Nginx`
 - stockage d'images `MinIO`
-- base PostgreSQL distante (`Neon` pour ma part car gratuite pour des petites DB)
+- base PostgreSQL accessible via `DATABASE_URL`
 
 Le projet peut aussi etre lance en Kubernetes local avec `Minikube` :
 
@@ -33,7 +33,7 @@ Le projet peut aussi etre lance en Kubernetes local avec `Minikube` :
   orchestration locale des conteneurs frontend, backend et MinIO
 - `k8s/`
   manifests Kubernetes pour `Minikube`, `Ingress` et autoscaling
-- base PostgreSQL distante
+- base PostgreSQL
   fournie via `DATABASE_URL`
 - `MinIO`
   stockage persistant des affiches de films
@@ -68,7 +68,7 @@ Pour le mode Docker :
 
 - Docker
 - Docker Compose
-- une base PostgreSQL accessible a distance, par exemple `Neon`
+- une base PostgreSQL accessible depuis l'hote ou les conteneurs
 
 Pour le mode developpement local sans Docker :
 
@@ -89,7 +89,9 @@ Exemple :
 
 ```env
 DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
-# SOURCE_DATABASE_URL=postgresql://user:password@old-host/old-db?sslmode=require
+# DATABASE_URL_LOCAL_VM=postgresql://cinematheque_user:password@192.168.124.76:5432/cinematheque
+# DATABASE_URL_KUBE_LOCAL_VM=postgresql://cinematheque_user:password@host.minikube.internal:15432/cinematheque
+# SOURCE_DATABASE_URL=postgresql://user:password@old-host/dbname?sslmode=require
 SECRET_KEY=change-me-in-production
 FRONTEND_URL=http://localhost:8080
 VITE_API_URL=/api
@@ -106,6 +108,75 @@ Important :
 - adapte `FRONTEND_URL` et `VITE_API_URL` a l'IP ou au domaine reel en deploiement
 - URL-encode les mots de passe PostgreSQL si besoin, par exemple `@` devient `%40` et `'` devient `%27`
 - pour un projet d'experience sans domaine public, `FRONTEND_URL` peut rester sur `http://localhost:8080` car le backend accepte aussi les acces depuis le reseau local prive
+
+### PostgreSQL Dans Neon Ou VM Locale
+
+Pour la CI GitLab et les runners distants, utilise une base accessible publiquement, par exemple Neon :
+
+```env
+DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
+```
+
+La VM locale reste utile pour les tests sur ta machine, mais elle ne doit pas etre la valeur de deploiement CI si le runner GitLab n'est pas sur ton PC.
+
+La base de developpement peut tourner dans la VM `fedora43` geree par libvirt (`qemu:///system`).
+
+Configuration attendue :
+
+```text
+Hote VM: 192.168.124.76
+Port: 5432
+Base: cinematheque
+Utilisateur: cinematheque_user
+```
+
+Pour Docker Compose ou un lancement local sur la machine hote, `DATABASE_URL` peut pointer directement vers la VM si tu veux tester hors Neon :
+
+```env
+DATABASE_URL=postgresql://cinematheque_user:password@192.168.124.76:5432/cinematheque
+```
+
+Pour Kubernetes dans Minikube avec la VM locale, `DATABASE_URL` peut pointer vers un relais. Comme Minikube ne route pas toujours directement vers le reseau libvirt `192.168.124.0/24`, on expose un relais sur la machine hote :
+
+```bash
+socat TCP-LISTEN:15432,bind=192.168.49.1,reuseaddr,fork TCP:192.168.124.76:5432
+```
+
+Puis :
+
+```env
+DATABASE_URL=postgresql://cinematheque_user:password@host.minikube.internal:15432/cinematheque
+```
+
+Dans PostgreSQL, `listen_addresses` doit autoriser les connexions reseau, et `pg_hba.conf` doit accepter le reseau libvirt :
+
+```conf
+listen_addresses = '*'
+host    cinematheque    cinematheque_user    192.168.124.0/24    md5
+```
+
+Verification rapide depuis la machine hote :
+
+```bash
+psql "$DATABASE_URL" -c "select current_database(), current_user, inet_server_addr();"
+```
+
+Verification depuis le pod backend Kubernetes :
+
+```bash
+kubectl exec -n cinematheque deployment/backend -- node -e "const {Pool}=require('pg'); const pool=new Pool({connectionString:process.env.DATABASE_URL, ssl:false}); pool.query('select current_database(), current_user').then(r=>{console.log(r.rows[0]); return pool.end();}).catch(e=>{console.error(e.message); process.exit(1);});"
+```
+
+Pour migrer depuis une ancienne base Neon ou autre provider PostgreSQL, exporter sans ownership ni privileges propres au provider :
+
+```bash
+pg_dump "$SOURCE_DATABASE_URL" --schema-only --no-owner --no-privileges > neon_schema_clean.sql
+pg_dump "$SOURCE_DATABASE_URL" --data-only --inserts --no-owner --no-privileges > neon_data_clean.sql
+psql "$DATABASE_URL" -f neon_schema_clean.sql
+psql "$DATABASE_URL" -f neon_data_clean.sql
+```
+
+Ces fichiers d'export contiennent potentiellement des donnees applicatives et ne doivent pas etre committes. Ils sont ignores par `.gitignore`.
 
 ### Backend
 
@@ -365,9 +436,53 @@ Le scan ZAP est execute sur le frontend servi via Nginx, ce qui permet de tester
 - le comportement du proxy
 - l'exposition generale de l'application web
 
+## Variables GitLab CI/CD
+
+Les vraies valeurs ne doivent pas etre committees dans le depot. Elles doivent etre ajoutees dans GitLab :
+
+```text
+Settings > CI/CD > Variables
+```
+
+Variables attendues par la pipeline :
+
+```text
+CI_DATABASE_URL
+CI_SECRET_KEY
+CI_MINIO_ROOT_USER
+CI_MINIO_ROOT_PASSWORD
+```
+
+`CI_DATABASE_URL` est injectee dans l'application sous le nom `DATABASE_URL`.
+
+Pour GitLab, mets de preference l'URL Neon dans `CI_DATABASE_URL`, par exemple :
+
+```text
+postgresql://user:password@host/dbname?sslmode=require
+```
+
+Pour un deploiement vers le Minikube local de la machine hote avec la VM locale, la valeur peut aussi etre l'URL relais :
+
+```text
+postgresql://cinematheque_user:password@host.minikube.internal:15432/cinematheque
+```
+
+Dans ce cas, le relais doit tourner sur la machine qui heberge Minikube :
+
+```bash
+socat TCP-LISTEN:15432,bind=192.168.49.1,reuseaddr,fork TCP:192.168.124.76:5432
+```
+
+Important :
+
+- avec un runner GitLab partage ou heberge ailleurs, la VM locale `192.168.124.76` ne sera pas accessible
+- `host.minikube.internal` fonctionne seulement depuis le Minikube de la machine hote, pas depuis Internet
+- pour deployer sur ton Minikube local via GitLab, il faut un GitLab Runner installe sur ta machine avec le tag `local` et une config `kubectl` fonctionnelle
+- pour un runner distant, utilise une base PostgreSQL accessible publiquement ou via un reseau prive/VPN
+
 ## Données Et Catalogue
 
-Le projet utilise `PostgreSQL` via `Neon` comme source de verite.
+Le projet utilise `PostgreSQL` comme source de verite. En CI/deploiement distant, la base doit etre accessible depuis le runner, par exemple via Neon. En developpement local, elle peut aussi etre hebergee dans la VM Fedora/libvirt et pointee par `DATABASE_URL`.
 
 Les films, utilisateurs et avis sont lus depuis la base.
 
@@ -409,7 +524,7 @@ Le projet est prepare pour un deploiement avec :
 - un frontend conteneurise
 - un proxy `Nginx`
 - un stockage d'objets `MinIO`
-- une base PostgreSQL distante
+- une base PostgreSQL accessible par le backend
 
 Points importants a retenir :
 

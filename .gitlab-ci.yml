@@ -92,7 +92,17 @@ zap_baseline:
  variables:
   DOCKER_HOST: tcp://docker:2375
   DOCKER_TLS_CERTDIR: ""
+  DATABASE_URL: ${CI_DATABASE_URL}
+  SECRET_KEY: ${CI_SECRET_KEY}
+  FRONTEND_URL: http://frontend:80
+  VITE_API_URL: /api
+  MINIO_ROOT_USER: ${CI_MINIO_ROOT_USER}
+  MINIO_ROOT_PASSWORD: ${CI_MINIO_ROOT_PASSWORD}
  script:
+  - test -n "$DATABASE_URL"
+  - test -n "$SECRET_KEY"
+  - test -n "$MINIO_ROOT_USER"
+  - test -n "$MINIO_ROOT_PASSWORD"
   - docker compose up -d --build
   - NETWORK_NAME=$(docker network ls --format '{{.Name}}' | grep '_default' | head -n 1)
   - docker run --rm -v "$PWD:/zap/wrk" --network "$NETWORK_NAME" ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://frontend:80 -r zap-report.html -I
@@ -105,6 +115,8 @@ zap_baseline:
 
 deploy_kubernetes:
  stage: deploy
+ tags:
+  - local
  image:
   name: bitnami/kubectl:latest
   entrypoint: [""]
@@ -112,20 +124,23 @@ deploy_kubernetes:
   KUBE_NAMESPACE: cinematheque
   BACKEND_IMAGE: $CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA
   FRONTEND_IMAGE: $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA
+  DEPLOY_DATABASE_URL: ${CI_DATABASE_URL}
+  DEPLOY_SECRET_KEY: ${CI_SECRET_KEY}
+  DEPLOY_MINIO_ROOT_USER: ${CI_MINIO_ROOT_USER}
+  DEPLOY_MINIO_ROOT_PASSWORD: ${CI_MINIO_ROOT_PASSWORD}
  before_script:
-  - test -n "$KUBE_URL"
-  - test -n "$KUBE_TOKEN"
-  - mkdir -p ~/.kube
-  - kubectl config set-cluster gitlab --server="$KUBE_URL" --insecure-skip-tls-verify=true
-  - kubectl config set-credentials gitlab --token="$KUBE_TOKEN"
-  - kubectl config set-context gitlab --cluster=gitlab --user=gitlab --namespace="$KUBE_NAMESPACE"
-  - kubectl config use-context gitlab
+  - test -n "$DEPLOY_DATABASE_URL"
+  - test -n "$DEPLOY_SECRET_KEY"
+  - test -n "$DEPLOY_MINIO_ROOT_USER"
+  - test -n "$DEPLOY_MINIO_ROOT_PASSWORD"
+  - kubectl config current-context
+  - kubectl get namespace "$KUBE_NAMESPACE" || true
  script:
   - kubectl apply -f k8s/namespace.yaml
   - kubectl apply -f k8s/configmap.yaml
   - kubectl apply -f k8s/minio-pvc.yaml
-  - kubectl create secret generic app-secrets --namespace "$KUBE_NAMESPACE" --from-literal=DATABASE_URL="$DATABASE_URL" --from-literal=SECRET_KEY="$SECRET_KEY" --dry-run=client -o yaml | kubectl apply -f -
-  - kubectl create secret generic minio-secrets --namespace "$KUBE_NAMESPACE" --from-literal=MINIO_ROOT_USER="$MINIO_ROOT_USER" --from-literal=MINIO_ROOT_PASSWORD="$MINIO_ROOT_PASSWORD" --from-literal=MINIO_ACCESS_KEY="$MINIO_ROOT_USER" --from-literal=MINIO_SECRET_KEY="$MINIO_ROOT_PASSWORD" --dry-run=client -o yaml | kubectl apply -f -
+  - kubectl create secret generic app-secrets --namespace "$KUBE_NAMESPACE" --from-literal=DATABASE_URL="$DEPLOY_DATABASE_URL" --from-literal=SECRET_KEY="$DEPLOY_SECRET_KEY" --dry-run=client -o yaml | kubectl apply -f -
+  - kubectl create secret generic minio-secrets --namespace "$KUBE_NAMESPACE" --from-literal=MINIO_ROOT_USER="$DEPLOY_MINIO_ROOT_USER" --from-literal=MINIO_ROOT_PASSWORD="$DEPLOY_MINIO_ROOT_PASSWORD" --from-literal=MINIO_ACCESS_KEY="$DEPLOY_MINIO_ROOT_USER" --from-literal=MINIO_SECRET_KEY="$DEPLOY_MINIO_ROOT_PASSWORD" --dry-run=client -o yaml | kubectl apply -f -
   - kubectl apply -f k8s/minio.yaml
   - kubectl apply -f k8s/backend.yaml
   - kubectl apply -f k8s/frontend.yaml
