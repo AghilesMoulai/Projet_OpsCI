@@ -922,12 +922,34 @@ http://IP_LOCALE_DU_PC_HOTE:8081
 
 ### Deploiement Kubernetes
 
-Le script [script.sh](/home/aghiles/Documents/OpsCI/projet/Projet_OpsCI/script.sh) automatise le deploiement.
+Le script [start_kube.sh](/home/aghiles/Documents/OpsCI/projet/Projet_OpsCI/start_kube.sh) automatise le deploiement Kubernetes local.
+
+Prerequis sur une nouvelle machine :
+
+- `Docker`
+- `Minikube`
+- `kubectl`
+- un fichier `.env` rempli a partir de `.env.example`
+
+Preparation du fichier d'environnement :
+
+```bash
+cp .env.example .env
+```
+
+Puis remplir au minimum :
+
+```env
+DATABASE_URL=
+SECRET_KEY=
+MINIO_ROOT_USER=
+MINIO_ROOT_PASSWORD=
+```
 
 Execution :
 
 ```bash
-./script.sh
+./start_kube.sh
 ```
 
 Le script :
@@ -936,10 +958,41 @@ Le script :
 - demarre `Minikube` si necessaire
 - active `ingress` et `metrics-server`
 - bascule Docker vers `Minikube`
-- build les images frontend et backend
+- build les images `frontend`, `backend` et `event-worker`
 - applique les manifests Kubernetes, y compris `MinIO`
 - cree ou met a jour les secrets a partir du fichier `.env`
+- redemarre les deployments
+- attend la fin des rollouts
 - affiche les commandes utiles de verification
+
+Verification apres lancement :
+
+```bash
+kubectl get pods -n cinematheque
+kubectl get svc -n cinematheque
+kubectl get hpa -n cinematheque
+kubectl get ingress -n cinematheque
+```
+
+Logs utiles :
+
+```bash
+kubectl logs -n cinematheque deployment/backend -f
+kubectl logs -n cinematheque deployment/event-worker -f
+kubectl logs -n cinematheque deployment/kafka -f
+```
+
+Acces local :
+
+```bash
+minikube ip
+```
+
+Puis ouvrir :
+
+```text
+http://IP_DE_MINIKUBE
+```
 
 ### Migration Des Anciennes Images
 

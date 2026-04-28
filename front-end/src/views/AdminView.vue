@@ -37,7 +37,11 @@
               <td class="td-title"><RouterLink :to="`/films/${film.id}`">{{ film.title }}</RouterLink></td>
               <td>{{ film.director }}</td>
               <td>{{ film.year }}</td>
-              <td><span class="genre-pill">{{ film.genre }}</span></td>
+              <td>
+                <div class="genre-pills">
+                  <span v-for="genre in splitGenres(film.genre)" :key="genre" class="genre-pill">{{ genre }}</span>
+                </div>
+              </td>
               <td>
                 <div class="action-btns">
                   <RouterLink :to="`/admin/films/${film.id}/edit`" class="btn btn-ghost btn-sm">Modifier</RouterLink>
@@ -81,7 +85,9 @@ onMounted(() => store.fetchAllPages())
 const filteredFilms = computed(() => {
   const q = search.value.toLowerCase()
   return store.films.filter(f =>
-    f.title?.toLowerCase().includes(q) || f.director?.toLowerCase().includes(q)
+    f.title?.toLowerCase().includes(q)
+    || f.director?.toLowerCase().includes(q)
+    || f.genre?.toLowerCase().includes(q)
   )
 })
 
@@ -95,6 +101,13 @@ function confirmDelete(film) { filmToDelete.value = film }
 async function doDelete() {
   await store.remove(filmToDelete.value.id)
   filmToDelete.value = null
+}
+
+function splitGenres(value) {
+  return String(value || '')
+    .split(',')
+    .map(genre => genre.trim())
+    .filter(Boolean)
 }
 </script>
 
@@ -214,10 +227,17 @@ td {
   color: var(--color-accent);
 }
 
+.genre-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .genre-pill {
   font-size: 11px;
   font-weight: 500;
-  padding: 2px 8px; border-radius: 20px;
+  padding: 2px 8px;
+  border-radius: 20px;
   background: rgba(232,201,122,0.1);
   color: var(--color-accent);
 }

@@ -10,7 +10,9 @@
             <div v-else class="poster-ph">🎬</div>
           </div>
           <div class="film-meta">
-            <span class="genre-tag">{{ store.current.genre }}</span>
+            <div class="genre-tags">
+              <span v-for="genre in splitGenres(store.current.genre)" :key="genre" class="genre-tag">{{ genre }}</span>
+            </div>
             <h1>{{ store.current.title }}</h1>
             <p class="meta-line">
               Réalisé par <strong>{{ store.current.director }}</strong>
@@ -203,6 +205,13 @@ async function deleteReview(id) {
   reviews.value = reviews.value.filter(r => r.id !== id)
   await store.fetchById(route.params.id)
 }
+
+function splitGenres(value) {
+  return String(value || '')
+    .split(',')
+    .map(genre => genre.trim())
+    .filter(Boolean)
+}
 </script>
 
 <style scoped>
@@ -276,15 +285,20 @@ async function deleteReview(id) {
   opacity: 0.2;
 }
 
+.genre-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 0.75rem;
+}
+
 .genre-tag {
-  display: inline-block;
   font-size: 11px;
   font-weight: 500;
   padding: 3px 10px;
   background: rgba(232,201,122,0.12);
   color: var(--color-accent);
   border-radius: 20px;
-  margin-bottom: 0.75rem;
 }
 
 .film-meta h1 {

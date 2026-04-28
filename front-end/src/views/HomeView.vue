@@ -53,7 +53,9 @@
             <span class="inline-rating">★ {{ film.average_rating ?? '—' }}</span>
             <span class="review-count">({{ film.ratings_count ?? 0 }} avis)</span>
           </p>
-          <span class="film-genre">{{ film.genre }}</span>
+          <div class="film-genres">
+            <span v-for="genre in splitGenres(film.genre)" :key="genre" class="film-genre">{{ genre }}</span>
+          </div>
         </div>
       </RouterLink>
       <p v-if="store.films.length === 0" class="no-results">Aucun film trouvé.</p>
@@ -134,6 +136,13 @@ function onPageSizeChange() {
 function goToPage(page) {
   if (page < 1 || page > store.pagination.totalPages || page === store.pagination.page) return
   fetchMovies(page)
+}
+
+function splitGenres(value) {
+  return String(value || '')
+    .split(',')
+    .map(genre => genre.trim())
+    .filter(Boolean)
 }
 
 onMounted(async () => {
@@ -301,6 +310,12 @@ select {
 
 .review-count {
   color: var(--color-muted);
+}
+
+.film-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .film-genre {
