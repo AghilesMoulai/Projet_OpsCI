@@ -28,21 +28,21 @@
 
           <div class="field">
             <label>Email</label>
-            <input 
-              v-model="form.email" 
-              type="email" 
-              placeholder="vous@exemple.com" 
-              required 
+            <input
+              v-model="form.email"
+              type="email"
+              placeholder="vous@exemple.com"
+              required
             />
           </div>
 
           <div class="field">
             <label>Mot de passe</label>
-            <input 
-              v-model="form.password" 
-              type="password" 
-              placeholder="••••••••" 
-              required 
+            <input
+              v-model="form.password"
+              type="password"
+              placeholder="••••••••"
+              required
             />
           </div>
 
@@ -63,13 +63,13 @@
             <span v-if="loading" class="spinner"></span>
             {{ loading ? 'Création...' : 'Créer un compte' }}
           </button>
-          
+
         <!-- Switch vers la connexion -->
         <p class="switch-auth">
           Déjà un compte ?
           <router-link to="/login">Se connecter</router-link>
         </p>
-        
+
         </form>
 
       </div>

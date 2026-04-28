@@ -2,7 +2,12 @@ jest.mock("../db", () => ({
   query: jest.fn()
 }));
 
+jest.mock("../services/eventBus", () => ({
+  publishEvent: jest.fn()
+}));
+
 const pool = require("../db");
+const { publishEvent } = require("../services/eventBus");
 const { addReview } = require("../controllers/reviewController");
 
 describe("addReview", () => {
@@ -45,6 +50,12 @@ describe("addReview", () => {
     await addReview(req, res);
 
     expect(pool.query).toHaveBeenCalledTimes(2);
+    expect(publishEvent).toHaveBeenCalledWith("review.created", {
+      reviewId: 1,
+      movieId: 10,
+      userId: 1,
+      rating: 5
+    });
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith({
       id: 1,

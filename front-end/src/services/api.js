@@ -37,7 +37,7 @@ export const authAPI = {
 }
 
 // ── Films ─────────────────────────────────────────────
-// GET    /movies?genre=&year=&search=
+// GET    /movies?genre=&year=&search=&page=&limit=
 // GET    /movies/genres
 // GET    /movies/:id
 // GET    /movies/:id/suggestions

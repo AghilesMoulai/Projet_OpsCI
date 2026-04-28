@@ -1,6 +1,6 @@
 <template>
   <div class="login-page">
-    
+
     <!-- LEFT -->
     <div class="login-left">
       <div class="film-strip">
@@ -278,6 +278,10 @@ async function handleLogin() {
   border-radius: 50%;
 }
 
-.role-dot.user { background: green; }
-.role-dot.dev  { background: orange; }
+.role-dot.user {
+  background: green;
+}
+.role-dot.dev {
+  background: orange;
+}
 </style>

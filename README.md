@@ -765,6 +765,11 @@ Evenements publies actuellement :
 ```text
 user.registered
 user.logged_in
+movie.created
+movie.updated
+movie.deleted
+review.created
+review.deleted
 ```
 
 Composants :
@@ -793,11 +798,25 @@ Verification en Docker Compose :
 docker compose logs -f event-worker
 ```
 
+Logs du broker Kafka/Redpanda en Docker Compose :
+
+```bash
+docker compose logs -f kafka
+```
+
 Verification en Kubernetes :
 
 ```bash
 kubectl logs -n cinematheque deployment/event-worker -f
 ```
+
+Logs du broker Kafka/Redpanda en Kubernetes :
+
+```bash
+kubectl logs -n cinematheque deployment/kafka -f
+```
+
+Les logs applicatifs des evenements sont dans `event-worker`. Les logs du service `kafka` servent surtout a verifier l'etat du broker Redpanda.
 
 ## Déploiement
 

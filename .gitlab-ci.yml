@@ -84,6 +84,15 @@ frontend_audit:
  script:
   - npm audit --audit-level=high
 
+eventworker_audit:
+ stage: security
+ image: node:20
+ before_script:
+  - cd event-worker
+  - npm ci
+ script:
+  - npm audit --audit-level=high
+
 semgrep:
   stage: security
   image: returntocorp/semgrep
