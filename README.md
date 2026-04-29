@@ -503,6 +503,32 @@ Ou en arriere-plan :
 docker compose up -d
 ```
 
+### Demarrage Docker Avec Ou Sans Images MinIO
+
+Pour lancer le projet avec Docker Compose, utilise :
+
+```bash
+./first_launch_docker.sh
+```
+
+Le script :
+
+- demarre d'abord `MinIO`
+- cree le bucket `movie-images` si besoin
+- importe les images depuis `minio-export/movie-images` si le dossier existe
+- lance ensuite toute l'application avec `docker compose up -d --build`
+
+Le dossier `minio-export` n'est pas obligatoire. S'il n'est pas present, le projet demarre quand meme avec un bucket MinIO vide. Il sert seulement a restaurer des photos deja existantes, car les photos ne sont pas dans la base PostgreSQL : la base contient seulement des chemins comme `/movie-images/nom-du-fichier.jpg`, tandis que les vrais fichiers sont stockes dans MinIO.
+
+Pour preparer ce dossier avant d'envoyer le projet a quelqu'un :
+
+```bash
+docker compose up -d minio
+./export_minio_images.sh
+```
+
+Puis inclure le dossier `minio-export` dans le zip du projet si tu veux partager les photos existantes.
+
 ### 4. Acceder a l'application
 
 - Frontend : `http://localhost:8080`
@@ -1014,6 +1040,28 @@ Conditions :
 - le `MinIO` Kubernetes doit deja etre deploye
 - la base PostgreSQL n'a pas besoin d'etre modifiee si les noms d'objets restent identiques
 
+### Minikube Avec Ou Sans Images Exportees
+
+Commence par deployer Kubernetes :
+
+```bash
+./start_kube.sh
+```
+
+Puis prepare le bucket MinIO de Minikube :
+
+```bash
+./first_launch_kube.sh
+```
+
+Ce script :
+
+- ouvre temporairement un `port-forward` vers `svc/minio`
+- cree le bucket `movie-images` si besoin
+- copie le contenu de `minio-export/movie-images` dans le MinIO Kubernetes si le dossier existe
+
+Le dossier `minio-export` n'est donc pas necessaire pour lancer le projet. Le meme dossier peut servir pour Docker Compose avec `./first_launch_docker.sh`, ou pour Minikube avec `./start_kube.sh` puis `./first_launch_kube.sh`, uniquement si tu veux restaurer les photos existantes.
+
 ### Autoscaling
 
 L'autoscaling horizontal est configure dans [k8s/hpa.yaml](/home/aghiles/Documents/OpsCI/projet/Projet_OpsCI/k8s/hpa.yaml).
@@ -1026,7 +1074,7 @@ kubectl top pods -n cinematheque
 kubectl get deploy -n cinematheque
 ```
 
-Sur ce projet, l'autoscaling a ete valide experimentalement :
+Sur ce projet, l'autoscaling à été validé expérimentalement :
 
 - le `backend-hpa` surveille la CPU du deployment `backend`
 - seuil cible : `70%`
@@ -1081,7 +1129,7 @@ http://localhost:8080
 
 ## Auteurs
 
-Projet realise dans le cadre de l'UE OpsCI. Par:
+Projet realisé dans le cadre de l'UE OpsCI. Par:
 
 - Aghiles MOULAI <Aghiles.Moulai.pro@gmail.com>
 
