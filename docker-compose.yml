@@ -1,11 +1,10 @@
 services:
  minio:
   image: minio/minio:latest
-  container_name: cinematheque-minio
   command: server /data --console-address ":9001"
   ports:
-   - "9000:9000"
-   - "9001:9001"
+   - "${MINIO_API_HOST_PORT:-9000}:9000"
+   - "${MINIO_CONSOLE_HOST_PORT:-9001}:9001"
   environment:
    MINIO_ROOT_USER: ${MINIO_ROOT_USER}
    MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
@@ -15,9 +14,8 @@ services:
  backend:
   build:
    context: ./backend
-  container_name: cinematheque-backend
   ports:
-   - "3000:3000"
+   - "${BACKEND_HOST_PORT:-3000}:3000"
   environment:
    PORT: 3000
    NODE_ENV: production
@@ -30,19 +28,54 @@ services:
    MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
    MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
    MINIO_BUCKET: movie-images
+   KAFKA_BROKERS: kafka:9092
+   KAFKA_TOPIC: cinematheque.events
   depends_on:
    - minio
+   - kafka
  
  frontend:
   build:
    context: ./front-end
    args:
     VITE_API_URL: ${VITE_API_URL}
-  container_name: cinematheque-frontend
   ports:
-   - "8080:80"
+   - "${FRONTEND_HOST_PORT:-8080}:80"
   depends_on:
    - backend
   
+ kafka:
+  image: redpandadata/redpanda:latest
+  command:
+   - redpanda
+   - start
+   - --overprovisioned
+   - --smp
+   - "1"
+   - --memory
+   - 512M
+   - --reserve-memory
+   - 0M
+   - --node-id
+   - "0"
+   - --check=false
+   - --kafka-addr
+   - PLAINTEXT://0.0.0.0:9092
+   - --advertise-kafka-addr
+   - PLAINTEXT://kafka:9092
+  ports:
+   - "${KAFKA_HOST_PORT:-9092}:9092"
+
+ event-worker:
+  build:
+   context: ./event-worker
+  environment:
+   KAFKA_BROKERS: kafka:9092
+   KAFKA_TOPIC: cinematheque.events
+  depends_on:
+   - kafka
+  restart: on-failure
+
+
 volumes:
  minio_data:

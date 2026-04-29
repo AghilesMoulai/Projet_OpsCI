@@ -20,6 +20,10 @@ onMounted(() => auth.fetchMe())
 </script>
 
 <style>
-#app { min-height: 100vh; }
-main { padding: 0; }
+#app {
+  min-height: 100vh;
+}
+main {
+  padding: 0;
+}
 </style>

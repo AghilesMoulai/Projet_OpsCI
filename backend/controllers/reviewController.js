@@ -1,4 +1,5 @@
 const pool = require("../db");
+const { publishEvent } = require("../services/eventBus");
 
 exports.getReviews = async (req, res) => {
     try {
@@ -38,6 +39,14 @@ exports.addReview = async (req, res) => {
             "INSERT INTO reviews (user_id, movie_id, rating, comment) VALUES ($1,$2,$3,$4) RETURNING *",
             [req.user.id, movie_id, rating, comment || null]
         );
+
+        await publishEvent("review.created", {
+            reviewId: result.rows[0].id,
+            movieId: result.rows[0].movie_id,
+            userId: result.rows[0].user_id,
+            rating: result.rows[0].rating,
+        });
+
         res.status(201).json(result.rows[0]);
     } catch (err) {
         console.error(err);
@@ -47,7 +56,21 @@ exports.addReview = async (req, res) => {
 
 exports.deleteReview = async (req, res) => {
     try {
-        await pool.query("DELETE FROM reviews WHERE id=$1", [req.params.id]);
+        const result = await pool.query(
+            "DELETE FROM reviews WHERE id=$1 RETURNING id, user_id, movie_id, rating",
+            [req.params.id]
+        );
+
+        if (result.rows.length > 0) {
+            await publishEvent("review.deleted", {
+                reviewId: result.rows[0].id,
+                movieId: result.rows[0].movie_id,
+                userId: result.rows[0].user_id,
+                rating: result.rows[0].rating,
+                actorId: req.user?.id,
+            });
+        }
+
         res.json({ message: "Avis supprimé." });
     } catch (err) {
         console.error(err);

@@ -1,6 +1,8 @@
 stages:
  - test
+ - build
  - security
+ - deploy
 
 backend_tests:
  stage: test
@@ -28,6 +30,42 @@ frontend_tests:
  script:
   - npm test -- --run
 
+build_backend_image:
+ stage: build
+ tags:
+  - local
+ variables:
+  BACKEND_IMAGE: $CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA
+ before_script:
+  - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+ script:
+  - docker build -t "$BACKEND_IMAGE" backend
+  - docker push "$BACKEND_IMAGE"
+
+build_frontend_image:
+ stage: build
+ tags:
+  - local
+ variables:
+  FRONTEND_IMAGE: $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA
+ before_script:
+  - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+ script:
+  - docker build --build-arg VITE_API_URL=/api -t "$FRONTEND_IMAGE" front-end
+  - docker push "$FRONTEND_IMAGE"
+
+build_event_worker_image:
+ stage: build
+ tags:
+  - local
+ variables:
+  EVENT_WORKER_IMAGE: $CI_REGISTRY_IMAGE/event-worker:$CI_COMMIT_SHORT_SHA
+ before_script:
+  - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+ script:
+  - docker build -t "$EVENT_WORKER_IMAGE" event-worker
+  - docker push "$EVENT_WORKER_IMAGE"
+
 backend_audit:
  stage: security
  image: node:20
@@ -46,6 +84,15 @@ frontend_audit:
  script:
   - npm audit --audit-level=high
 
+eventworker_audit:
+ stage: security
+ image: node:20
+ before_script:
+  - cd event-worker
+  - npm ci
+ script:
+  - npm audit --audit-level=high
+
 semgrep:
   stage: security
   image: returntocorp/semgrep
@@ -54,19 +101,87 @@ semgrep:
   
 zap_baseline:
  stage: security
- image: docker:27
- services:
-  - docker:27-dind
+ tags:
+  - local
  variables:
-  DOCKER_HOST: tcp://docker:2375
-  DOCKER_TLS_CERTDIR: ""
+  DATABASE_URL: ${CI_DATABASE_URL}
+  SECRET_KEY: ${CI_SECRET_KEY}
+  FRONTEND_URL: http://frontend:80
+  VITE_API_URL: /api
+  MINIO_ROOT_USER: ${CI_MINIO_ROOT_USER}
+  MINIO_ROOT_PASSWORD: ${CI_MINIO_ROOT_PASSWORD}
+  BACKEND_HOST_PORT: "13000"
+  FRONTEND_HOST_PORT: "18080"
+  KAFKA_HOST_PORT: "19092"
+  MINIO_API_HOST_PORT: "19000"
+  MINIO_CONSOLE_HOST_PORT: "19001"
  script:
+  - test -n "$DATABASE_URL"
+  - test -n "$SECRET_KEY"
+  - test -n "$MINIO_ROOT_USER"
+  - test -n "$MINIO_ROOT_PASSWORD"
+  - docker compose down --remove-orphans || true
   - docker compose up -d --build
   - NETWORK_NAME=$(docker network ls --format '{{.Name}}' | grep '_default' | head -n 1)
-  - docker run --rm -v "$PWD:/zap/wrk" --network "$NETWORK_NAME" ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://frontend:80 -r zap-report.html -I
+  - mkdir -p zap-wrk
+  - chmod 777 zap-wrk
+  - docker run --rm -v "$PWD/zap-wrk:/zap/wrk" --network "$NETWORK_NAME" ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://frontend:80 -r zap-report.html -I
  after_script:
   - docker compose down || true
  artifacts:
   when: always
   paths:
-   - zap-report.html
+   - zap-wrk/zap-report.html
+
+deploy_kubernetes:
+ stage: deploy
+ tags:
+  - local
+ image:
+  name: bitnami/kubectl:latest
+  entrypoint: [""]
+ when: manual
+ variables:
+  KUBE_NAMESPACE: cinematheque
+  BACKEND_IMAGE: $CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA
+  FRONTEND_IMAGE: $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA
+  EVENT_WORKER_IMAGE: $CI_REGISTRY_IMAGE/event-worker:$CI_COMMIT_SHORT_SHA
+  DEPLOY_DATABASE_URL: ${CI_DATABASE_URL}
+  DEPLOY_SECRET_KEY: ${CI_SECRET_KEY}
+  DEPLOY_MINIO_ROOT_USER: ${CI_MINIO_ROOT_USER}
+  DEPLOY_MINIO_ROOT_PASSWORD: ${CI_MINIO_ROOT_PASSWORD}
+ before_script:
+  - test -n "$DEPLOY_DATABASE_URL"
+  - test -n "$DEPLOY_SECRET_KEY"
+  - test -n "$DEPLOY_MINIO_ROOT_USER"
+  - test -n "$DEPLOY_MINIO_ROOT_PASSWORD"
+  - kubectl config current-context
+  - kubectl get namespace "$KUBE_NAMESPACE" || true
+ script:
+  - kubectl apply -f k8s/namespace.yaml
+  - kubectl apply -f k8s/configmap.yaml
+  - kubectl apply -f k8s/minio-pvc.yaml
+  - kubectl create secret docker-registry gitlab-registry --namespace "$KUBE_NAMESPACE" --docker-server="$CI_REGISTRY" --docker-username="$CI_REGISTRY_USER" --docker-password="$CI_REGISTRY_PASSWORD" --dry-run=client -o yaml | kubectl apply -f -
+  - kubectl create secret generic app-secrets --namespace "$KUBE_NAMESPACE" --from-literal=DATABASE_URL="$DEPLOY_DATABASE_URL" --from-literal=SECRET_KEY="$DEPLOY_SECRET_KEY" --dry-run=client -o yaml | kubectl apply -f -
+  - kubectl create secret generic minio-secrets --namespace "$KUBE_NAMESPACE" --from-literal=MINIO_ROOT_USER="$DEPLOY_MINIO_ROOT_USER" --from-literal=MINIO_ROOT_PASSWORD="$DEPLOY_MINIO_ROOT_PASSWORD" --from-literal=MINIO_ACCESS_KEY="$DEPLOY_MINIO_ROOT_USER" --from-literal=MINIO_SECRET_KEY="$DEPLOY_MINIO_ROOT_PASSWORD" --dry-run=client -o yaml | kubectl apply -f -
+  - kubectl patch serviceaccount default --namespace "$KUBE_NAMESPACE" -p '{"imagePullSecrets":[{"name":"gitlab-registry"}]}'
+  - kubectl apply -f k8s/kafka.yaml
+  - kubectl apply -f k8s/minio.yaml
+  - kubectl apply -f k8s/backend.yaml
+  - kubectl apply -f k8s/frontend.yaml
+  - kubectl apply -f k8s/event-worker.yaml
+  - kubectl apply -f k8s/ingress.yaml
+  - kubectl apply -f k8s/hpa.yaml
+  - kubectl set image deployment/backend backend="$BACKEND_IMAGE" --namespace "$KUBE_NAMESPACE"
+  - kubectl set image deployment/frontend frontend="$FRONTEND_IMAGE" --namespace "$KUBE_NAMESPACE"
+  - kubectl set image deployment/event-worker event-worker="$EVENT_WORKER_IMAGE" --namespace "$KUBE_NAMESPACE"
+  - kubectl rollout status deployment/kafka --namespace "$KUBE_NAMESPACE" --timeout=180s
+  - kubectl rollout status deployment/minio --namespace "$KUBE_NAMESPACE" --timeout=180s
+  - kubectl rollout status deployment/backend --namespace "$KUBE_NAMESPACE" --timeout=180s
+  - kubectl rollout status deployment/frontend --namespace "$KUBE_NAMESPACE" --timeout=180s
+  - kubectl rollout status deployment/event-worker --namespace "$KUBE_NAMESPACE" --timeout=180s
+ environment:
+  name: production
+ only:
+  - main  
+  - deployment
