@@ -61,20 +61,20 @@ Ce schema montre les composants principaux du projet, les flux de CI/CD, les mod
 ┌──────────────────────────────────────────────────────────────────────────────────────────────┐
 │                                      GITLAB                                                  │
 │                                                                                              │
-│  ┌───────────────────────────┐       ┌───────────────────────────┐                          │
-│  │ Repo Git                  │       │ CI/CD Variables            │                          │
-│  │                           │       │                           │                          │
-│  │ - backend/                │       │ - CI_DATABASE_URL          │                          │
-│  │ - front-end/              │       │ - CI_SECRET_KEY            │                          │
-│  │ - k8s/                    │       │ - CI_MINIO_ROOT_USER       │                          │
-│  │ - docker-compose.yml      │       │ - CI_MINIO_ROOT_PASSWORD   │                          │
-│  │ - .gitlab-ci.yml          │       │                           │                          │
-│  └─────────────┬─────────────┘       └─────────────┬─────────────┘                          │
-│                │                                   │                                        │
+│  ┌───────────────────────────┐       ┌───────────────────────────┐                           │
+│  │ Repo Git                  │       │ CI/CD Variables           │                           │
+│  │                           │       │                           │                           │
+│  │ - backend/                │       │ - CI_DATABASE_URL         │                           │
+│  │ - front-end/              │       │ - CI_SECRET_KEY           │                           │
+│  │ - k8s/                    │       │ - CI_MINIO_ROOT_USER      │                           │
+│  │ - docker-compose.yml      │       │ - CI_MINIO_ROOT_PASSWORD  │                           │
+│  │ - .gitlab-ci.yml          │       │                           │                           │
+│  └─────────────┬─────────────┘       └─────────────┬─────────────┘                           │
+│                │                                   │                                         │
 │                │ declenche pipeline                │ injecte secrets                         │
-│                v                                   v                                        │
+│                v                                   v                                         │
 │  ┌────────────────────────────────────────────────────────────────────────────────────────┐  │
-│  │                                  Pipeline GitLab CI/CD                                │  │
+│  │                                  Pipeline GitLab CI/CD                                 │  │
 │  │                                                                                        │  │
 │  │  stages: test -> build -> security -> deploy                                           │  │
 │  │                                                                                        │  │
@@ -99,7 +99,7 @@ Ce schema montre les composants principaux du projet, les flux de CI/CD, les mod
 │                │ push/pull images                                                            │
 │                v                                                                             │
 │  ┌────────────────────────────────────────────────────────────────────────────────────────┐  │
-│  │                           GitLab Container Registry                                   │  │
+│  │                           GitLab Container Registry                                    │  │
 │  │                                                                                        │  │
 │  │   registry.gitlab.com/.../backend:<commit>                                             │  │
 │  │   registry.gitlab.com/.../frontend:<commit>                                            │  │
@@ -108,121 +108,121 @@ Ce schema montre les composants principaux du projet, les flux de CI/CD, les mod
                                            |
                                            | jobs avec tag local
                                            v
-┌──────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                      PC HOTE LOCAL                                           │
-│                                                                                              │
-│  ┌───────────────────────────┐                                                               │
-│  │ GitLab Runner local       │                                                               │
-│  │                           │                                                               │
-│  │ - executor: shell         │                                                               │
-│  │ - tag: local              │                                                               │
-│  │ - tourne sur ton PC       │                                                               │
-│  │ - execute les commandes   │                                                               │
-│  └─────────────┬─────────────┘                                                               │
-│                │                                                                             │
-│                ├─────────────────────────────────────────────────────────────────────────┐   │
-│                │                                                                         │   │
-│                v                                                                         v   │
-│  ┌───────────────────────────┐                                             ┌────────────────┐│
-│  │ Docker local              │                                             │ kubectl        ││
-│  │                           │                                             │                ││
+┌───────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                      PC HOTE LOCAL                                            │
+│                                                                                               │
+│  ┌───────────────────────────┐                                                                │
+│  │ GitLab Runner local       │                                                                │
+│  │                           │                                                                │
+│  │ - executor: shell         │                                                                │
+│  │ - tag: local              │                                                                │
+│  │ - tourne sur ton PC       │                                                                │
+│  │ - execute les commandes   │                                                                │
+│  └─────────────┬─────────────┘                                                                │
+│                │                                                                              │
+│                ├─────────────────────────────────────────────────────────────────────────┐    │
+│                │                                                                         │    │
+│                v                                                                         v    │
+│  ┌───────────────────────────┐                                             ┌─────────────────┐│
+│  │ Docker local              │                                             │ kubectl         ││
+│  │                           │                                             │                 ││
 │  │ - build images            │                                             │ - lit kubeconfig││
 │  │ - docker compose          │                                             │ - parle a       ││
 │  │ - lance ZAP               │                                             │   Minikube      ││
 │  │ - heberge Minikube        │                                             │ - apply/rollout ││
-│  └─────────────┬─────────────┘                                             └───────┬────────┘│
-│                │                                                                   │         │
-│                │ docker compose up                                                 │ kubectl │
-│                v                                                                   v         │
-│  ┌────────────────────────────────────────────────────────────────────────────────────────┐  │
-│  │                        Mode Docker Compose / tests ZAP                                │  │
-│  │                                                                                        │  │
-│  │   ┌─────────────────────┐       ┌─────────────────────┐       ┌─────────────────────┐  │  │
-│  │   │ frontend container  │       │ backend container   │       │ minio container     │  │  │
-│  │   │                     │       │                     │       │                     │  │  │
-│  │   │ Nginx + Vue build   │──────▶│ Node.js / Express   │──────▶│ bucket movie-images │  │  │
-│  │   │ port 8080 -> 80     │ /api  │ port 3000           │ S3    │ ports 9000/9001     │  │  │
-│  │   └──────────┬──────────┘       └──────────┬──────────┘       └─────────────────────┘  │  │
-│  │              │                             │                                            │  │
-│  │              │                             │ DATABASE_URL                               │  │
-│  │              │                             v                                            │  │
-│  │              │                    ┌─────────────────────┐                               │  │
-│  │              │                    │ PostgreSQL Neon     │                               │  │
-│  │              │                    │ base distante       │                               │  │
-│  │              │                    └─────────────────────┘                               │  │
-│  │              │                                                                          │  │
-│  │              v                                                                          │  │
-│  │   ┌─────────────────────┐                                                              │  │
-│  │   │ OWASP ZAP container │                                                              │  │
-│  │   │                     │                                                              │  │
-│  │   │ scanne frontend:80  │                                                              │  │
-│  │   │ genere rapport HTML │                                                              │  │
-│  │   └─────────────────────┘                                                              │  │
-│  └────────────────────────────────────────────────────────────────────────────────────────┘  │
-│                │                                                                             │
+│  └─────────────┬─────────────┘                                             └───────┬─────────┘│
+│                │                                                                   │          │
+│                │ docker compose up                                                 │ kubectl  │
+│                v                                                                   v          │
+│  ┌────────────────────────────────────────────────────────────────────────────────────────┐   │
+│  │                        Mode Docker Compose / tests ZAP                                 │   │
+│  │                                                                                        │   │
+│  │   ┌─────────────────────┐       ┌─────────────────────┐       ┌─────────────────────┐  │   │
+│  │   │ frontend container  │       │ backend container   │       │ minio container     │  │   │
+│  │   │                     │       │                     │       │                     │  │   │
+│  │   │ Nginx + Vue build   │──────▶│ Node.js / Express   │──────▶│ bucket movie-images  │   │
+│  │   │ port 8080 -> 80     │ /api  │ port 3000           │ S3    │ ports 9000/9001     │  │   │
+│  │   └──────────┬──────────┘       └──────────┬──────────┘       └─────────────────────┘  │   │
+│  │              │                             │                                           │   │
+│  │              │                             │ DATABASE_URL                              │   │
+│  │              │                             v                                           │   │
+│  │              │                    ┌─────────────────────┐                              │   │
+│  │              │                    │ PostgreSQL Neon     │                              │   │
+│  │              │                    │ base distante       │                              │   │
+│  │              │                    └─────────────────────┘                              │   │
+│  │              │                                                                         │   │
+│  │              v                                                                         │   │
+│  │   ┌─────────────────────┐                                                              │   │
+│  │   │ OWASP ZAP container │                                                              │   │
+│  │   │                     │                                                              │   │
+│  │   │ scanne frontend:80  │                                                              │   │
+│  │   │ genere rapport HTML │                                                              │   │
+│  │   └─────────────────────┘                                                              │   │
+│  └────────────────────────────────────────────────────────────────────────────────────────┘   │
+│                │                                                                              │
 │                │ minikube start --driver=docker                                               │
-│                v                                                                             │
-│  ┌────────────────────────────────────────────────────────────────────────────────────────┐  │
-│  │                                Minikube                                                │  │
-│  │                     Cluster Kubernetes local dans Docker                               │  │
-│  │                                                                                        │  │
-│  │   Namespace: cinematheque                                                              │  │
-│  │                                                                                        │  │
-│  │   ┌────────────────────────────────────────────────────────────────────────────────┐   │  │
-│  │   │ Secrets / ConfigMap                                                            │   │  │
-│  │   │                                                                                │   │  │
-│  │   │ - app-secrets: DATABASE_URL, SECRET_KEY                                        │   │  │
-│  │   │ - minio-secrets: MINIO_ROOT_USER, MINIO_ROOT_PASSWORD                          │   │  │
-│  │   │ - gitlab-registry: credentials pour pull les images privees GitLab             │   │  │
-│  │   │ - cinematheque-config: NODE_ENV, PORT, FRONTEND_URL, MINIO config              │   │  │
-│  │   └────────────────────────────────────────────────────────────────────────────────┘   │  │
-│  │                                                                                        │  │
-│  │   ┌─────────────────────┐       ┌─────────────────────┐       ┌─────────────────────┐  │  │
-│  │   │ Deployment frontend │       │ Deployment backend  │       │ Deployment minio    │  │  │
-│  │   │                     │       │                     │       │                     │  │  │
-│  │   │ image GitLab        │       │ image GitLab        │       │ image minio/minio   │  │  │
-│  │   │ Nginx               │──────▶│ Node.js / Express   │──────▶│ stockage objets     │  │  │
-│  │   │ Vue statique        │ /api  │ auth + films + avis │ S3    │ movie-images        │  │  │
-│  │   └──────────┬──────────┘       └──────────┬──────────┘       └──────────┬──────────┘  │  │
-│  │              │                             │                             │             │  │
-│  │              │                             │                             │ PVC         │  │
-│  │              │                             │                             v             │  │
-│  │              │                             │                    ┌─────────────────┐    │  │
-│  │              │                             │                    │ minio-data PVC  │    │  │
-│  │              │                             │                    │ stockage durable│    │  │
-│  │              │                             │                    └─────────────────┘    │  │
-│  │              │                             │                                           │  │
-│  │              │                             │ DATABASE_URL                              │  │
-│  │              │                             v                                           │  │
-│  │              │                    ┌─────────────────────┐                              │  │
-│  │              │                    │ PostgreSQL Neon     │                              │  │
-│  │              │                    │ users/movies/reviews│                              │  │
-│  │              │                    └─────────────────────┘                              │  │
-│  │              │                                                                         │  │
-│  │              v                                                                         │  │
-│  │   ┌─────────────────────┐                                                              │  │
-│  │   │ Service frontend    │                                                              │  │
-│  │   │ Service backend     │                                                              │  │
-│  │   │ Service minio       │                                                              │  │
-│  │   └──────────┬──────────┘                                                              │  │
-│  │              │                                                                         │  │
-│  │              v                                                                         │  │
-│  │   ┌─────────────────────┐                                                              │  │
-│  │   │ Ingress             │                                                              │  │
-│  │   │ ou port-forward     │                                                              │  │
-│  │   └─────────────────────┘                                                              │  │
-│  │                                                                                        │  │
-│  │   HPA: backend-hpa / frontend-hpa                                                      │  │
-│  │   Readiness/Liveness: /health sur le backend                                           │  │
-│  └────────────────────────────────────────────────────────────────────────────────────────┘  │
-│                                                                                              │
+│                v                                                                              │
+│  ┌────────────────────────────────────────────────────────────────────────────────────────┐   │
+│  │                                Minikube                                                │   │
+│  │                     Cluster Kubernetes local dans Docker                               │   │
+│  │                                                                                        │   │
+│  │   Namespace: cinematheque                                                              │   │
+│  │                                                                                        │   │
+│  │   ┌────────────────────────────────────────────────────────────────────────────────┐   │   │
+│  │   │ Secrets / ConfigMap                                                            │   │   │
+│  │   │                                                                                │   │   │
+│  │   │ - app-secrets: DATABASE_URL, SECRET_KEY                                        │   │   │
+│  │   │ - minio-secrets: MINIO_ROOT_USER, MINIO_ROOT_PASSWORD                          │   │   │
+│  │   │ - gitlab-registry: credentials pour pull les images privees GitLab             │   │   │
+│  │   │ - cinematheque-config: NODE_ENV, PORT, FRONTEND_URL, MINIO config              │   │   │
+│  │   └────────────────────────────────────────────────────────────────────────────────┘   │   │
+│  │                                                                                        │   │
+│  │   ┌─────────────────────┐        ┌─────────────────────┐        ┌─────────────────────┐│   │
+│  │   │ Deployment frontend │        │ Deployment backend  │        │ Deployment minio    ││   │
+│  │   │                     │        │                     │        │                     ││   │
+│  │   │ image GitLab        │        │ image GitLab        │        │ image minio/minio   ││   │
+│  │   │ Nginx               │──────▶│ Node.js / Express   │──────▶│ stockage objets     ││   │
+│  │   │ Vue statique        │ /api   │ auth + films + avis │ S3     │ movie-images        ││   │
+│  │   └──────────┬──────────┘        └─────────┬───────────┘        └────────┬────────────┘│   │
+│  │              │                             │                             │             │   │
+│  │              │                             │                             │ PVC         │   │
+│  │              │                             │                             v             │   │
+│  │              │                             │                    ┌─────────────────┐    │   │
+│  │              │                             │                    │ minio-data PVC  │    │   │
+│  │              │                             │                    │ stockage durable│    │   │
+│  │              │                             │                    └─────────────────┘    │   │
+│  │              │                             │                                           │   │
+│  │              │                             │ DATABASE_URL                              │   │
+│  │              │                             v                                           │   │
+│  │              │                    ┌─────────────────────┐                              │   │
+│  │              │                    │ PostgreSQL Neon     │                              │   │
+│  │              │                    │ users/movies/reviews│                              │   │
+│  │              │                    └─────────────────────┘                              │   │
+│  │              │                                                                         │   │
+│  │              v                                                                         │   │
+│  │   ┌─────────────────────┐                                                              │   │
+│  │   │ Service frontend    │                                                              │   │
+│  │   │ Service backend     │                                                              │   │
+│  │   │ Service minio       │                                                              │   │
+│  │   └──────────┬──────────┘                                                              │   │
+│  │              │                                                                         │   │
+│  │              v                                                                         │   │
+│  │   ┌─────────────────────┐                                                              │   │
+│  │   │ Ingress             │                                                              │   │
+│  │   │ ou port-forward     │                                                              │   │
+│  │   └─────────────────────┘                                                              │   │
+│  │                                                                                        │   │
+│  │   HPA: backend-hpa / frontend-hpa                                                      │   │
+│  │   Readiness/Liveness: /health sur le backend                                           │   │
+│  └────────────────────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                               │
 │  Acces utilisateur local :                                                                    │
-│                                                                                              │
+│                                                                                               │
 │  Navigateur -> http://localhost:8081                                                          │
 │             -> kubectl port-forward svc/frontend 8081:80                                      │
 │             -> Service frontend -> Pod frontend -> Nginx -> Vue                               │
 │             -> /api -> Service backend -> Pod backend -> Neon / MinIO                         │
-└──────────────────────────────────────────────────────────────────────────────────────────────┘
+└───────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 Chemin principal en CI/CD :
