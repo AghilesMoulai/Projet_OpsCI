@@ -92,6 +92,12 @@ function handleLogout() {
   padding: 2px 8px;
   border-radius: 20px;
 }
-.role-badge.dev  { background: rgba(232,201,122,0.15); color: var(--color-accent); }
-.role-badge.user { background: rgba(46,204,113,0.12);  color: var(--color-success); }
+.role-badge.dev {
+  background: rgba(232,201,122,0.15);
+  color: var(--color-accent);
+}
+.role-badge.user {
+  background: rgba(46,204,113,0.12);
+  color: var(--color-success);
+}
 </style>

@@ -10,9 +10,14 @@ jest.mock("jsonwebtoken", () => ({
   sign: jest.fn()
 }));
 
+jest.mock("../services/eventBus", () => ({
+  publishEvent: jest.fn()
+}));
+
 const pool = require("../db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const { publishEvent } = require("../services/eventBus");
 const { login } = require("../controllers/authController");
 
 describe("login", () => {
@@ -59,6 +64,11 @@ describe("login", () => {
       expect.any(String),
       { expiresIn: "1h" }
     );
+    expect(publishEvent).toHaveBeenCalledWith("user.logged_in", {
+      userId: 1,
+      email: "test@example.com",
+      role: "user"
+    });
     expect(res.json).toHaveBeenCalledWith({
       token: "fake-jwt-token",
       user: {

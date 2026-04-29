@@ -1,213 +1,531 @@
-# Rapport – TME 2 : Conception et mise en place d’une application Web
+# Rapport - Projet OpsCI : Cinematheque
 
 ## Introduction
 
-Ce TME a pour objectif de nous initier à une démarche réaliste de conception et de développement d’une application web complète. L’enjeu principal n’est pas uniquement de produire du code fonctionnel, mais de comprendre et justifier les choix techniques effectués, comme cela est attendu dans un contexte professionnel.
+Ce projet consiste a mettre en place une application web complete de gestion de cinematheque. L'objectif est de couvrir a la fois le developpement applicatif, la conteneurisation, le deploiement Kubernetes local et plusieurs pratiques OpsCI : tests, CI/CD, securite, stockage objet, autoscaling et gestion evenementielle avec Kafka.
 
-L’application réalisée repose sur une architecture simple **front-end / back-end**, où le back-end expose une API HTTP permettant de fournir des données, et le front-end consomme ces données afin de les afficher dynamiquement.
-
----
-
-## 1. Architecture et conception
-
-### 1.1 Étude des architectures existantes
-
-#### Architecture monolithique
-
-Dans une architecture monolithique, toutes les composantes de l’application (interface, logique métier, accès aux données) sont regroupées dans un seul bloc.
-
-* **Avantages** : simplicité de mise en place, facilité de déploiement.
-* **Limites** : faible évolutivité, maintenance difficile lorsque l’application grandit.
-* **Cas d’usage** : petites applications, prototypes.
-
-#### Architecture client–serveur
-
-Cette architecture sépare clairement le client (front-end) et le serveur (back-end), qui communiquent via un réseau.
-
-* **Avantages** : séparation des responsabilités, meilleure maintenabilité.
-* **Limites** : dépendance au réseau, gestion des communications.
-* **Cas d’usage** : applications web, mobiles, APIs.
-
-#### Architecture en couches (layered architecture)
-
-L’application est organisée en plusieurs couches (présentation, logique métier, accès aux données).
-
-* **Avantages** : clarté, facilité de test et d’évolution.
-* **Limites** : parfois plus verbeuse pour de petits projets.
-* **Cas d’usage** : applications d’entreprise, APIs structurées.
-
-#### Architecture microservices
-
-L’application est découpée en plusieurs services indépendants.
-
-* **Avantages** : forte scalabilité, indépendance des services.
-* **Limites** : complexité élevée, surdimensionnée pour de petits projets.
-* **Cas d’usage** : grandes plateformes, systèmes distribués.
+L'application permet de consulter un catalogue de films, de filtrer les resultats, de gerer les films en mode administrateur, de publier des avis et de stocker les affiches dans MinIO. Une couche Kafka, basee sur Redpanda, permet aussi de publier et consommer des evenements metier.
 
 ---
 
-### 1.2 Étude des design patterns
+## 1. Architecture generale
 
-#### MVC (Model – View – Controller)
+### 1.1 Composants applicatifs
 
-Ce pattern sépare les données (Model), l’affichage (View) et la logique de contrôle (Controller).
+L'application repose sur une architecture client-serveur :
 
-* **Problème résolu** : mélange des responsabilités.
-* **Avantages** : code plus clair, maintenance facilitée.
-* **Limites** : peut être excessif pour de très petits projets.
+- `front-end/` : application Vue 3 / Vite / Pinia servie par Nginx.
+- `backend/` : API Express / Node.js.
+- `PostgreSQL` : base de donnees relationnelle externe au cluster, accessible via `DATABASE_URL`.
+- `MinIO` : stockage objet compatible S3 pour les affiches de films.
+- `Kafka / Redpanda` : broker evenementiel compatible Kafka.
+- `event-worker/` : consommateur Kafka qui lit les evenements metier.
 
-#### Repository Pattern
+Le flux principal est le suivant :
 
-Il isole l’accès aux données du reste de l’application.
+```text
+Navigateur
+  -> Frontend Vue / Nginx
+  -> Backend Express
+  -> PostgreSQL externe via DATABASE_URL
+  -> MinIO pour les affiches
+  -> Kafka / Redpanda pour les evenements
+  -> event-worker pour la consommation
+```
 
-* **Problème résolu** : dépendance forte à la source de données.
-* **Avantages** : facilité de changement de source (JSON, base de données).
-* **Limites** : ajout d’une couche supplémentaire.
+### 1.2 Choix d'architecture
 
-#### Singleton
+L'architecture client-serveur a ete retenue car elle separe clairement l'interface utilisateur et l'API. Le backend est organise en couches simples :
 
-Garantit une instance unique d’un objet.
+- `routes/` pour declarer les endpoints HTTP.
+- `controllers/` pour la logique metier.
+- `services/` pour les services techniques comme Kafka et MinIO.
+- `middleware/` pour l'authentification et les droits admin.
+- `db.js` pour l'acces PostgreSQL.
 
-* **Avantages** : contrôle global.
-* **Limites** : couplage fort, tests plus complexes.
-
----
-
-### 1.3 Choix retenus et justification
-
-Pour ce projet, nous avons retenu :
-
-* une **architecture client–serveur**, adaptée aux applications web modernes ;
-* une **architecture en couches légère** côté back-end ;
-* le pattern **MVC** de manière simplifiée.
-
-Ces choix sont cohérents avec la taille du projet, tout en restant proches des pratiques professionnelles. Les microservices n’ont pas été retenus car ils introduisent une complexité inutile pour une application simple.
-
----
-
-### 1.4 Conception finale de l’application
-
-L’application est composée de :
-
-* un **front-end** : interface utilisateur en HTML/CSS/JavaScript ;
-* un **back-end** : API HTTP développée avec FastAPI ;
-* des **données** : stockées dans un fichier JSON simulant une base de données.
-
-Le front-end agit comme un client qui consomme l’API exposée par le back-end.
+Cette organisation reste legere, mais elle facilite les tests, l'evolution du projet et la comprehension du code.
 
 ---
 
-## 2. Back-end et API
+## 2. Backend et API
 
-### 2.1 Étude comparative des langages back-end
+### 2.1 Technologie retenue
 
-| Langage              | Points forts                                         | Limites                                     | Cas d’usage                   |
-| -------------------- | ---------------------------------------------------- | ------------------------------------------- | ----------------------------- |
-| Python               | Facile à apprendre, très productif, grand écosystème | Moins performant que les langages compilés  | APIs, data, prototypage       |
-| Java                 | Très robuste, largement utilisé en entreprise        | Verbeux, courbe d’apprentissage plus élevée | Applications d’entreprise     |
-| JavaScript (Node.js) | Un seul langage front/back, rapide                   | Gestion asynchrone parfois complexe         | APIs, applications temps réel |
+Le backend utilise `Node.js` avec `Express`. Ce choix est coherent avec le frontend JavaScript et permet de partager le meme langage sur la partie client et serveur.
 
-**KPI utilisés** : facilité d’apprentissage, productivité, écosystème, marché de l’emploi.
+Les dependances principales sont :
 
-### 2.2 Choix du langage et framework
+- `express` pour l'API HTTP.
+- `pg` pour PostgreSQL.
+- `jsonwebtoken` pour les tokens JWT.
+- `bcrypt` pour le hashage des mots de passe.
+- `minio` pour le stockage des affiches.
+- `kafkajs` pour la publication Kafka.
 
-Python a été retenu pour sa simplicité et sa productivité. Le framework **FastAPI** permet de créer rapidement des APIs performantes et bien documentées.
+### 2.2 Base de donnees PostgreSQL
+
+PostgreSQL n'est pas deploye comme pod Kubernetes dans ce projet. La base de donnees est externe au cluster Minikube et le backend s'y connecte avec la variable :
+
+```text
+DATABASE_URL
+```
+
+En Kubernetes, cette valeur est fournie au backend par le secret :
+
+```text
+app-secrets
+```
+
+Il est donc normal que la commande suivante ne montre aucun pod PostgreSQL :
+
+```bash
+kubectl get pods -n cinematheque
+```
+
+Les pods attendus sont ceux des composants applicatifs :
+
+```text
+frontend-...
+backend-...
+minio-...
+kafka-...
+event-worker-...
+```
+
+### 2.3 Endpoints principaux
+
+Les routes principales sont :
+
+```text
+POST   /api/auth/register
+POST   /api/auth/login
+GET    /api/auth/me
+
+GET    /api/movies
+GET    /api/movies/genres
+GET    /api/movies/:id
+GET    /api/movies/:id/suggestions
+POST   /api/movies
+PUT    /api/movies/:id
+DELETE /api/movies/:id
+
+GET    /api/reviews/:movieId
+POST   /api/reviews
+DELETE /api/reviews/:id
+```
+
+Les routes d'administration (`POST`, `PUT`, `DELETE` sur les films et suppression d'avis) sont protegees par JWT et par le middleware admin.
+
+### 2.4 Pagination et filtres
+
+L'endpoint `GET /api/movies` gere la pagination et les filtres :
+
+```text
+/api/movies?page=1&limit=10&genre=Action&search=avatar&minRating=4
+```
+
+La reponse contient les films et les metadonnees de pagination :
+
+```json
+{
+  "data": [],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 42,
+    "totalPages": 5
+  }
+}
+```
+
+Les limites autorisees sont `10`, `20` et `50`.
+
+### 2.5 Genres multiples
+
+Un film peut avoir plusieurs genres. Cote formulaire, l'administrateur peut :
+
+- cocher plusieurs genres existants ;
+- ajouter de nouveaux genres separes par des virgules.
+
+Cote backend, les genres sont normalises avant insertion. Par exemple :
+
+```text
+Science-fiction, Action, Aventure
+```
+
+Les filtres et la liste des genres prennent en compte ce format multi-genres.
+
+### 2.6 Suggestions de films
+
+Les suggestions utilisent deux criteres :
+
+- le nombre de genres en commun ;
+- la proximite du titre.
+
+Cela permet par exemple de rapprocher :
+
+```text
+Avatar
+Avatar: La voie de l'eau
+```
+
+Les suggestions restent limitees a 4 films pour garder une interface lisible.
 
 ---
 
-### 2.3 Notion d’API
+## 3. Frontend
 
-Une API (Application Programming Interface) permet à des applications de communiquer entre elles. Dans ce projet, l’API utilise le protocole HTTP et expose des endpoints (`/hello`, `/movies`) qui retournent des réponses au format JSON.
+### 3.1 Technologie retenue
 
----
+Le frontend utilise `Vue 3`, `Vite` et `Pinia`.
 
-### 2.4 Environnement virtuel
+Les vues principales sont :
 
-Un environnement virtuel Python permet d’isoler les dépendances d’un projet.
+- `HomeView.vue` : catalogue public avec pagination, filtres et badges de genres.
+- `FilmDetailView.vue` : detail d'un film, avis et suggestions.
+- `LoginView.vue` / `RegisterView.vue` : authentification.
+- `AdminView.vue` : interface d'administration.
+- `FilmFormView.vue` : ajout et modification d'un film.
 
-* Il évite les conflits entre versions de bibliothèques.
-* Il garantit la reproductibilité du projet.
-* En entreprise, il permet de travailler sur plusieurs projets sans interférences.
+### 3.2 Catalogue
 
----
+Le catalogue affiche les films sous forme de cartes. Il propose :
 
-### 2.5 Format JSON
+- recherche par titre ;
+- filtre par genre ;
+- filtre par annee ;
+- filtre par note minimale ;
+- choix du nombre de films par page (`10`, `20`, `50`) ;
+- pagination numerotee (`Precedent`, pages, `Suivant`).
 
-JSON (JavaScript Object Notation) est un format léger d’échange de données.
+Les genres multiples sont affiches sous forme de badges separes.
 
-* Lisible par l’humain et la machine.
-* Indépendant du langage.
-* Très utilisé dans les APIs web.
+### 3.3 Administration
 
-Autres formats :
+L'interface admin permet :
 
-* **CSV** : échanges simples de données tabulaires.
-* **XML** : formats complexes et structurés.
-* **YAML** : fichiers de configuration.
+- d'ajouter un film ;
+- de modifier un film ;
+- de supprimer un film ;
+- de rechercher dans le catalogue admin ;
+- de visualiser les genres sous forme de badges.
 
----
-
-## 3. Front-end
-
-### 3.1 Étude des technologies front-end
-
-| Technologie | Avantages                              | Limites                                 |
-| ----------- | -------------------------------------- | --------------------------------------- |
-| HTML/CSS/JS | Simple, léger, aucune dépendance       | Moins structuré pour les grands projets |
-| React       | Très utilisé, composants réutilisables | Courbe d’apprentissage plus élevée      |
-
-**Choix retenu** : HTML/CSS/JavaScript, suffisant pour un projet simple et pédagogique.
+Contrairement au catalogue public, l'admin recupere toutes les pages de films par lots de 50 afin de pouvoir gerer tout le catalogue.
 
 ---
 
-### 3.2 Interface réalisée
+## 4. Stockage des images avec MinIO
 
-L’interface affiche une liste de films sous forme de cartes avec image, titre, réalisateur et description. Elle est conçue pour être facilement connectée à une API.
+Les affiches de films sont stockees dans MinIO, dans le bucket :
+
+```text
+movie-images
+```
+
+Le backend accepte :
+
+- une URL distante ;
+- une image locale envoyee en base64 depuis le formulaire.
+
+Dans les deux cas, l'image est stockee dans MinIO et l'URL finale est sauvegardee en base.
+
+En Kubernetes, MinIO utilise :
+
+- `Deployment` : `minio`
+- `Service` : `minio`
+- `PVC` : `minio-data`
+- namespace : `cinematheque`
+
+Commandes de verification :
+
+```bash
+kubectl get pods -n cinematheque
+kubectl get pvc -n cinematheque
+kubectl logs -n cinematheque deployment/minio -f
+```
 
 ---
 
-## 4. Communication front-end / back-end
+## 5. Gestion evenementielle avec Kafka
 
-### 4.1 CORS
+### 5.1 Composants
 
-CORS (Cross-Origin Resource Sharing) est un mécanisme de sécurité des navigateurs empêchant des requêtes entre origines différentes.
+La couche evenementielle utilise Redpanda, une implementation compatible Kafka.
 
-Le problème a été résolu en configurant le serveur FastAPI pour autoriser explicitement l’origine du front-end.
+Composants :
+
+- `Deployment` : `kafka`
+- `Service` : `kafka`
+- `Deployment` : `event-worker`
+- namespace : `cinematheque`
+
+Le backend publie les evenements via `backend/services/eventBus.js`. Le worker les consomme dans `event-worker/index.js`.
+
+### 5.2 Evenements publies
+
+Evenements actuellement publies :
+
+```text
+user.registered
+user.logged_in
+movie.created
+movie.updated
+movie.deleted
+review.created
+review.deleted
+```
+
+Les evenements sont publies en mode "best effort" : si Kafka est indisponible, l'action principale de l'utilisateur ne doit pas echouer.
+
+### 5.3 Logs Kafka
+
+En Docker Compose :
+
+```bash
+docker compose logs -f event-worker
+docker compose logs -f kafka
+```
+
+En Kubernetes :
+
+```bash
+kubectl logs -n cinematheque deployment/event-worker -f
+kubectl logs -n cinematheque deployment/kafka -f
+```
+
+Les logs applicatifs des evenements sont principalement visibles dans `event-worker`.
 
 ---
 
-### 4.2 Chargement dynamique des données
+## 6. Kubernetes local avec Minikube
 
-Le front-end utilise des requêtes HTTP pour récupérer les films depuis l’API. Les données JSON reçues sont ensuite utilisées pour générer dynamiquement l’affichage.
+### 6.1 Namespace et ressources
 
-Les images sont servies par le back-end via des fichiers statiques, et le front utilise les URLs fournies par l’API.
+Toutes les ressources Kubernetes applicatives sont deployees dans le namespace :
+
+```text
+cinematheque
+```
+
+Ressources principales :
+
+| Type | Nom |
+| --- | --- |
+| Namespace | `cinematheque` |
+| Deployment | `frontend` |
+| Deployment | `backend` |
+| Deployment | `minio` |
+| Deployment | `kafka` |
+| Deployment | `event-worker` |
+| Service | `frontend` |
+| Service | `backend` |
+| Service | `minio` |
+| Service | `kafka` |
+| Ingress | `cinematheque` |
+| ConfigMap | `cinematheque-config` |
+| Secret | `app-secrets` |
+| Secret | `minio-secrets` |
+| PVC | `minio-data` |
+| HPA | `backend-hpa` |
+| HPA | `frontend-hpa` |
+
+Il n'y a pas de `Deployment`, de `Service` ou de pod `postgres` dans ce cluster. PostgreSQL est externe et seulement reference par `DATABASE_URL`.
+
+Les pods generes par Kubernetes ont des suffixes automatiques. Ils commencent donc par :
+
+```text
+frontend-...
+backend-...
+minio-...
+kafka-...
+event-worker-...
+```
+
+Il ne faut pas documenter un nom complet de pod avec suffixe fixe, car il change a chaque rollout.
+
+### 6.2 Script de lancement
+
+Le deploiement local est automatise par :
+
+```bash
+./start_kube.sh
+```
+
+Prerequis :
+
+- `Docker`
+- `Minikube`
+- `kubectl`
+- un fichier `.env` cree a partir de `.env.example`
+
+Le script :
+
+- demarre Minikube si necessaire ;
+- active `ingress` et `metrics-server` ;
+- build les images dans le Docker de Minikube ;
+- cree ou met a jour les secrets ;
+- applique les manifests Kubernetes ;
+- redemarre les deployments ;
+- attend les rollouts.
+
+### 6.3 Verification Kubernetes
+
+Commandes utiles :
+
+```bash
+kubectl get pods -n cinematheque
+kubectl get svc -n cinematheque
+kubectl get ingress -n cinematheque
+kubectl get hpa -n cinematheque
+kubectl get pvc -n cinematheque
+```
+
+Verification des rollouts :
+
+```bash
+kubectl rollout status deployment/frontend -n cinematheque
+kubectl rollout status deployment/backend -n cinematheque
+kubectl rollout status deployment/minio -n cinematheque
+kubectl rollout status deployment/kafka -n cinematheque
+kubectl rollout status deployment/event-worker -n cinematheque
+```
+
+Acces local :
+
+```bash
+minikube ip
+```
+
+Puis ouvrir :
+
+```text
+http://IP_DE_MINIKUBE
+```
+
+Acces par port-forward :
+
+```bash
+kubectl port-forward -n cinematheque svc/frontend 8081:80 --address 0.0.0.0
+```
+
+Puis ouvrir :
+
+```text
+http://IP_DE_LA_MACHINE:8081
+```
 
 ---
 
-### 4.3 Répartition des traitements
+## 7. Docker Compose
 
-* **Serveur** : filtrage, limitation, sécurité, validation.
-* **Client** : affichage, interactions utilisateur.
+Le projet peut aussi etre lance en Docker Compose.
 
-Cette séparation permet d’assurer la cohérence et la sécurité des données.
+Services principaux :
+
+- `frontend`
+- `backend`
+- `minio`
+- `kafka`
+- `event-worker`
+
+Commande :
+
+```bash
+docker compose up --build
+```
+
+Verification :
+
+```bash
+docker compose ps
+docker compose logs -f backend
+docker compose logs -f event-worker
+```
 
 ---
 
-### 4.4 Bonnes pratiques API
+## 8. Tests
 
-Une bonne API se caractérise par :
+### 8.1 Tests backend
 
-* des routes claires et cohérentes ;
-* l’utilisation correcte des codes HTTP ;
-* des formats de réponse homogènes ;
-* une gestion propre des erreurs.
+Le backend utilise Jest.
 
-Ces principes ont été appliqués dans notre API (routes REST, limitation des données, réponses JSON claires).
+Commande :
+
+```bash
+cd backend
+npm test
+```
+
+Les tests couvrent notamment :
+
+- inscription ;
+- connexion ;
+- ajout d'avis ;
+- ajout de film ;
+- pagination des films ;
+- normalisation des genres multiples ;
+- publication des evenements Kafka via mocks.
+
+### 8.2 Tests frontend
+
+Le frontend utilise Vitest.
+
+Commande :
+
+```bash
+cd front-end
+npm test -- --run
+```
+
+Build de verification :
+
+```bash
+cd front-end
+npm run build
+```
+
+---
+
+## 9. CI/CD et securite
+
+Le projet contient une configuration GitLab CI/CD. La pipeline est orientee autour des etapes suivantes :
+
+- tests backend ;
+- tests frontend ;
+- build des images Docker ;
+- controles de securite ;
+- deploiement Kubernetes local via runner local.
+
+La securite applicative repose notamment sur :
+
+- authentification JWT ;
+- hashage des mots de passe avec `bcrypt` ;
+- middleware admin pour les routes sensibles ;
+- secrets Kubernetes pour `DATABASE_URL`, `SECRET_KEY` et les identifiants MinIO ;
+- separation entre `ConfigMap` et `Secret`.
+
+---
+
+## 10. Captures d'ecran recommandees
+
+Pour illustrer le rapport, les captures les plus pertinentes sont :
+
+1. Catalogue avec pagination visible.
+2. Catalogue avec plusieurs badges de genres.
+3. Formulaire admin avec selection de plusieurs genres.
+4. Page detail d'un film avec avis et suggestions.
+5. Logs `event-worker` montrant les evenements Kafka.
+6. `kubectl get pods -n cinematheque`.
+7. `kubectl get svc -n cinematheque`.
+8. `kubectl get hpa -n cinematheque`.
+9. Console MinIO avec le bucket `movie-images`.
+10. Resultat des tests backend/frontend.
 
 ---
 
 ## Conclusion
 
-Ce TME nous a permis de comprendre les différentes étapes nécessaires à la conception d’une application web moderne. Au-delà de l’implémentation technique, l’accent a été mis sur la réflexion, la justification des choix et la documentation, des compétences essentielles en contexte professionnel.
+Le projet final met en place une application web complete et deployable localement avec Docker Compose ou Kubernetes via Minikube. Il integre une API Express, un frontend Vue, une base PostgreSQL, un stockage objet MinIO, une couche evenementielle Kafka/Redpanda, des tests automatises et des manifests Kubernetes.
 
-Ce projet constitue une base solide pour les TME suivants, où l’application pourra être enrichie et améliorée.
+Les fonctionnalites recentes comme la pagination, les genres multiples, les suggestions basees sur les titres et genres, ainsi que les evenements Kafka, rapprochent l'application d'un fonctionnement plus realiste et plus maintenable.

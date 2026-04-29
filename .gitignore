@@ -32,3 +32,5 @@ migrate_postgres.sh
 
 # Fichiers locaux d'outillage
 .vorg.db
+.mc-config/
+=======

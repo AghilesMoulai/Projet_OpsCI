@@ -6,8 +6,13 @@ jest.mock("bcrypt", () => ({
   hash: jest.fn()
 }));
 
+jest.mock("../services/eventBus", () => ({
+  publishEvent: jest.fn()
+}));
+
 const pool = require("../db");
 const bcrypt = require("bcrypt");
+const { publishEvent } = require("../services/eventBus");
 const { register } = require("../controllers/authController");
 
 describe("register", () => {
@@ -43,6 +48,11 @@ describe("register", () => {
 
     expect(pool.query).toHaveBeenCalledTimes(2);
     expect(bcrypt.hash).toHaveBeenCalledWith("secret123", 10);
+    expect(publishEvent).toHaveBeenCalledWith("user.registered", {
+      userId: 1,
+      email: "test@example.com",
+      role: "user"
+    });
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith({
       id: 1,

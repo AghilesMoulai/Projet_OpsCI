@@ -84,6 +84,15 @@ frontend_audit:
  script:
   - npm audit --audit-level=high
 
+eventworker_audit:
+ stage: security
+ image: node:20
+ before_script:
+  - cd event-worker
+  - npm ci
+ script:
+  - npm audit --audit-level=high
+
 semgrep:
   stage: security
   image: returntocorp/semgrep
@@ -101,6 +110,11 @@ zap_baseline:
   VITE_API_URL: /api
   MINIO_ROOT_USER: ${CI_MINIO_ROOT_USER}
   MINIO_ROOT_PASSWORD: ${CI_MINIO_ROOT_PASSWORD}
+  BACKEND_HOST_PORT: "13000"
+  FRONTEND_HOST_PORT: "18080"
+  KAFKA_HOST_PORT: "19092"
+  MINIO_API_HOST_PORT: "19000"
+  MINIO_CONSOLE_HOST_PORT: "19001"
  script:
   - test -n "$DATABASE_URL"
   - test -n "$SECRET_KEY"
@@ -126,6 +140,7 @@ deploy_kubernetes:
  image:
   name: bitnami/kubectl:latest
   entrypoint: [""]
+ when: manual
  variables:
   KUBE_NAMESPACE: cinematheque
   BACKEND_IMAGE: $CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA

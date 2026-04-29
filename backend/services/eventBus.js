@@ -13,6 +13,8 @@ let producerReady = false;
 async function getProducer() {
   if (!brokers.length) return null;
 
+  // Le producteur Kafka est créé une seule fois pour éviter de rouvrir
+  // une connexion à chaque événement publié par l'API.
   if (!producer) {
     const kafka = new Kafka({
       clientId: "cinematheque-backend",
@@ -35,6 +37,8 @@ async function publishEvent(type, payload = {}) {
     const kafkaProducer = await getProducer();
     if (!kafkaProducer) return;
 
+    // Publication "best effort" : si Kafka est indisponible, l'action métier
+    // principale ne doit pas échouer pour l'utilisateur.
     await kafkaProducer.send({
       topic,
       messages: [
