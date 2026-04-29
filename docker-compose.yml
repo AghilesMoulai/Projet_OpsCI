@@ -3,8 +3,8 @@ services:
   image: minio/minio:latest
   command: server /data --console-address ":9001"
   ports:
-   - "9000:9000"
-   - "9001:9001"
+   - "${MINIO_API_HOST_PORT:-9000}:9000"
+   - "${MINIO_CONSOLE_HOST_PORT:-9001}:9001"
   environment:
    MINIO_ROOT_USER: ${MINIO_ROOT_USER}
    MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
@@ -15,7 +15,7 @@ services:
   build:
    context: ./backend
   ports:
-   - "3000:3000"
+   - "${BACKEND_HOST_PORT:-3000}:3000"
   environment:
    PORT: 3000
    NODE_ENV: production
@@ -40,7 +40,7 @@ services:
    args:
     VITE_API_URL: ${VITE_API_URL}
   ports:
-   - "8080:80"
+   - "${FRONTEND_HOST_PORT:-8080}:80"
   depends_on:
    - backend
   
@@ -64,7 +64,7 @@ services:
    - --advertise-kafka-addr
    - PLAINTEXT://kafka:9092
   ports:
-   - "9092:9092"
+   - "${KAFKA_HOST_PORT:-9092}:9092"
 
  event-worker:
   build:
